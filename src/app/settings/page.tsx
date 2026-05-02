@@ -4,12 +4,14 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Check } from "lucide-react";
+import { useConcept, type Concept } from "@/components/ConceptThemeProvider";
 
 type User = { id: string; displayName: string; role: string };
 
 export default function SettingsPage() {
   const router = useRouter();
   const [me, setMe] = useState<User | null>(null);
+  const { concept, setConcept } = useConcept();
   const [theme, setTheme] = useState<"auto" | "light" | "dark">("auto");
   const [fontScale, setFontScale] = useState("1");
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -125,6 +127,66 @@ export default function SettingsPage() {
       <main className="p-4 pb-24 lg:pb-8 max-w-2xl mx-auto space-y-6">
         <h1 className="text-2xl font-display mt-2" style={{ color: "var(--expo-blue)" }}>設定</h1>
 
+        {/* デザインコンセプト */}
+        <section className="bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+          <h2 className="font-black text-gray-800 dark:text-gray-100 mb-1">デザインテーマ</h2>
+          <p className="text-xs text-gray-400 dark:text-gray-400 mb-4">アプリ全体の見た目を切り替えます</p>
+          <div className="space-y-3">
+            {([
+              {
+                value: "workshop" as Concept,
+                name: "Workshop",
+                nameJp: "工房・木目",
+                desc: "ナチュラルで温かみのあるデザイン（デフォルト）",
+                preview: { bg: "oklch(0.96 0.01 70)", accent: "oklch(0.55 0.13 40)", border: "oklch(0.7 0.03 70)" },
+              },
+              {
+                value: "cosmic" as Concept,
+                name: "Cosmic Vault",
+                nameJp: "宇宙×銀行",
+                desc: "深宇宙・ホログラム・ネオンアクセント",
+                preview: { bg: "oklch(0.16 0.04 270)", accent: "oklch(0.78 0.18 195)", border: "oklch(0.45 0.05 270 / 0.6)" },
+              },
+              {
+                value: "pixel" as Concept,
+                name: "Pixel Quest",
+                nameJp: "8bitゲーム",
+                desc: "レトロゲーム風・コインとクエスト",
+                preview: { bg: "#0c0e1a", accent: "#ffd83d", border: "#3d4577" },
+              },
+            ] as const).map((opt) => {
+              const active = concept === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => setConcept(opt.value)}
+                  className="w-full flex items-center gap-4 p-4 rounded-2xl transition-all active:scale-[0.99] text-left"
+                  style={{
+                    border: active ? `2px solid var(--expo-blue)` : "2px solid #e5e7eb",
+                    background: active ? "var(--expo-light-blue)" : "#fafafa",
+                  }}
+                >
+                  {/* ミニプレビュー */}
+                  <div
+                    className="shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black"
+                    style={{ background: opt.preview.bg, border: `2px solid ${opt.preview.border}`, color: opt.preview.accent }}
+                  >
+                    {opt.value === "cosmic" ? "✦" : opt.value === "pixel" ? "▶" : "❧"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-sm text-gray-800 dark:text-gray-100">{opt.name}</span>
+                      <span className="text-xs text-gray-400">{opt.nameJp}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{opt.desc}</p>
+                  </div>
+                  {active && <Check size={18} style={{ color: "var(--expo-blue)", flexShrink: 0 }} />}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
         {/* テーマ */}
         <section className="bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
           <h2 className="font-black text-gray-800 dark:text-gray-100 mb-3">テーマ</h2>
@@ -227,11 +289,9 @@ export default function SettingsPage() {
           </section>
         )}
 
-        {/* 商標注記 */}
+        {/* 注記 */}
         <p className="text-center text-xs opacity-50 pt-4" style={{ color: "var(--foreground)" }}>
-          本アプリは家庭内私的利用のみを目的とした参照実装です。
-          Pixar/Disney のキャラクター名・配色は着想元として参照しているのみで、
-          いかなる公式・商業利用も意図しません。
+          本アプリは家庭内私的利用のみを目的としたオリジナル作品です。
         </p>
       </main>
     </div>

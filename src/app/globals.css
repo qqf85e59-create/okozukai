@@ -1,5 +1,270 @@
 @import "tailwindcss";
 
+/* ============================================================
+   3コンセプト・デザイントークン（tokens.css より移植）
+   ============================================================ */
+
+:root {
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --duration-fast: 150ms;
+  --duration: 280ms;
+  --duration-slow: 600ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-concept="cosmic"] {
+  --font-display-concept: "Space Grotesk", "Hiragino Sans", system-ui, sans-serif;
+  --font-body-concept: "Space Grotesk", "Hiragino Sans", system-ui, sans-serif;
+  --font-mono-concept: "JetBrains Mono", ui-monospace, monospace;
+
+  --c-bg: oklch(0.16 0.04 270);
+  --c-bg-elev: oklch(0.21 0.05 270);
+  --c-bg-elev-2: oklch(0.26 0.06 270);
+  --c-surface: oklch(0.23 0.05 270 / 0.7);
+  --c-surface-strong: oklch(0.28 0.06 270);
+  --c-border: oklch(0.45 0.05 270 / 0.4);
+  --c-border-strong: oklch(0.6 0.08 270 / 0.6);
+
+  --c-fg: oklch(0.96 0.01 270);
+  --c-fg-mute: oklch(0.78 0.03 270);
+  --c-fg-dim: oklch(0.6 0.04 270);
+
+  --c-accent: oklch(0.78 0.18 195);
+  --c-accent-2: oklch(0.72 0.22 320);
+  --c-accent-3: oklch(0.86 0.16 95);
+  --c-positive: oklch(0.82 0.2 150);
+  --c-warn: oklch(0.78 0.18 60);
+  --c-danger: oklch(0.7 0.22 25);
+
+  --c-glow-accent: 0 0 0 1px oklch(0.78 0.18 195 / 0.4), 0 0 24px oklch(0.78 0.18 195 / 0.45);
+  --c-shadow-card: 0 10px 30px oklch(0.1 0.04 270 / 0.5), 0 1px 0 oklch(1 0 0 / 0.04) inset;
+  --c-shadow-pop: 0 18px 50px oklch(0.05 0.04 270 / 0.6);
+  --c-grid-bg:
+    radial-gradient(1200px 600px at 80% -10%, oklch(0.3 0.12 320 / 0.3), transparent 60%),
+    radial-gradient(900px 500px at -10% 100%, oklch(0.3 0.12 200 / 0.3), transparent 60%),
+    linear-gradient(180deg, oklch(0.14 0.04 270) 0%, oklch(0.18 0.04 270) 100%);
+
+  /* Tailwindダークモード統合 */
+  --background: var(--c-bg);
+  --foreground: var(--c-fg);
+}
+
+[data-concept="pixel"] {
+  --font-display-concept: "Press Start 2P", "DotGothic16", monospace;
+  --font-body-concept: "DotGothic16", "Press Start 2P", monospace;
+  --font-mono-concept: "Press Start 2P", monospace;
+
+  --c-bg: #0c0e1a;
+  --c-bg-elev: #161a2e;
+  --c-bg-elev-2: #1f2440;
+  --c-surface: #1a1e36;
+  --c-surface-strong: #232847;
+  --c-border: #3d4577;
+  --c-border-strong: #5a64a8;
+
+  --c-fg: #f4f1e8;
+  --c-fg-mute: #b8b9cf;
+  --c-fg-dim: #7a7e9d;
+
+  --c-accent: #ffd83d;
+  --c-accent-2: #ff5577;
+  --c-accent-3: #5fe0a4;
+  --c-positive: #5fe0a4;
+  --c-warn: #ffaa44;
+  --c-danger: #ff5577;
+
+  --c-glow-accent: 0 0 0 2px #ffd83d, 0 0 0 4px #0c0e1a, 0 0 0 6px #ffd83d33;
+  --c-shadow-card: 0 0 0 2px #0c0e1a, 0 4px 0 0 #3d4577, 0 0 0 4px #1f2440;
+  --c-shadow-pop: 0 0 0 2px #0c0e1a, 0 8px 0 0 #1f2440;
+  --c-grid-bg:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 4px),
+    radial-gradient(circle at 20% 10%, #1a2050 0%, #0c0e1a 60%);
+
+  --background: var(--c-bg);
+  --foreground: var(--c-fg);
+}
+
+[data-concept="workshop"] {
+  --font-display-concept: "Fraunces", "Hiragino Mincho ProN", serif;
+  --font-body-concept: "Inter", "Hiragino Sans", system-ui, sans-serif;
+  --font-mono-concept: "JetBrains Mono", ui-monospace, monospace;
+
+  --c-bg: oklch(0.96 0.01 70);
+  --c-bg-elev: oklch(0.99 0.005 70);
+  --c-bg-elev-2: oklch(0.93 0.015 70);
+  --c-surface: oklch(0.99 0.005 70);
+  --c-surface-strong: oklch(0.94 0.015 70);
+  --c-border: oklch(0.84 0.02 70);
+  --c-border-strong: oklch(0.7 0.03 70);
+
+  --c-fg: oklch(0.22 0.02 60);
+  --c-fg-mute: oklch(0.45 0.02 60);
+  --c-fg-dim: oklch(0.62 0.02 60);
+
+  --c-accent: oklch(0.55 0.13 40);
+  --c-accent-2: oklch(0.45 0.08 230);
+  --c-accent-3: oklch(0.7 0.13 80);
+  --c-positive: oklch(0.55 0.13 145);
+  --c-warn: oklch(0.7 0.15 70);
+  --c-danger: oklch(0.55 0.18 25);
+
+  --c-glow-accent: 0 2px 0 oklch(0.4 0.1 40);
+  --c-shadow-card: 0 1px 2px oklch(0.5 0.05 60 / 0.08), 0 8px 24px oklch(0.5 0.05 60 / 0.08);
+  --c-shadow-pop: 0 20px 40px oklch(0.4 0.05 60 / 0.18);
+  --c-grid-bg:
+    repeating-linear-gradient(0deg, oklch(0.5 0.02 60 / 0.025) 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(90deg, oklch(0.5 0.02 60 / 0.025) 0 1px, transparent 1px 24px),
+    linear-gradient(180deg, oklch(0.97 0.01 70) 0%, oklch(0.94 0.015 70) 100%);
+}
+
+/* コンセプト適用時: 背景・前景を上書き */
+[data-concept] body {
+  background: var(--c-bg);
+  color: var(--c-fg);
+  font-family: var(--font-body-concept, inherit);
+}
+
+/* ============================================================
+   コンセプト共通ユーティリティクラス（app.css より）
+   ============================================================ */
+
+/* --- Status Pill --- */
+.concept-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: var(--font-mono-concept, ui-monospace);
+}
+[data-concept="pixel"] .concept-pill { border-radius: 0; font-family: var(--font-display-concept); font-size: 7px; }
+.concept-pill.pending  { background: oklch(0.78 0.18 60 / 0.18); color: var(--c-warn, #f59e0b); }
+.concept-pill.approved { background: oklch(0.82 0.2 150 / 0.18); color: var(--c-positive, #10b981); }
+.concept-pill.rejected { background: oklch(0.7 0.22 25 / 0.18); color: var(--c-danger, #ef4444); }
+.concept-pill.settled  { background: oklch(0.78 0.18 195 / 0.18); color: var(--c-accent, #06b6d4); }
+
+/* --- Balance Hero --- */
+.concept-balance-value {
+  font-family: var(--font-display-concept, inherit);
+  font-weight: 700;
+  font-size: 56px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--c-fg);
+}
+[data-concept="cosmic"] .concept-balance-value {
+  background: linear-gradient(180deg, var(--c-accent) 0%, var(--c-accent-2) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+[data-concept="pixel"] .concept-balance-value {
+  font-size: 28px;
+  color: var(--c-accent);
+  text-shadow: 3px 3px 0 var(--c-bg);
+}
+[data-concept="workshop"] .concept-balance-value {
+  font-style: italic;
+}
+
+/* --- Bottom Tabbar (コンセプト版) --- */
+[data-concept] .concept-tabbar {
+  border-top: 1px solid var(--c-border);
+  background: var(--c-bg-elev);
+}
+[data-concept="cosmic"] .concept-tabbar {
+  background: oklch(0.18 0.04 270 / 0.95);
+  backdrop-filter: blur(20px);
+}
+[data-concept="pixel"] .concept-tabbar {
+  border-top: 2px solid var(--c-border-strong);
+}
+
+/* --- Bar fill --- */
+[data-concept] .concept-bar-fill {
+  background: linear-gradient(90deg, var(--c-accent), var(--c-accent-2));
+  transition: width var(--duration-slow) var(--ease-out);
+}
+[data-concept="pixel"] .concept-bar-fill {
+  background: var(--c-accent);
+  background-image: linear-gradient(90deg, var(--c-accent) 50%, oklch(0.7 0.18 60) 50%);
+  background-size: 8px 100%;
+}
+
+/* --- Coin pop animation (残高カウントアップ) --- */
+@keyframes coinPop {
+  0%   { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-30px) scale(1.4); opacity: 0; }
+}
+.coin-pop {
+  position: absolute;
+  font-family: var(--font-display-concept, inherit);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--c-accent, #f59e0b);
+  pointer-events: none;
+  animation: coinPop 800ms var(--ease-out, ease-out) forwards;
+}
+
+/* --- Badge sparkle --- */
+@keyframes sparkle {
+  0%, 100% { transform: scale(0.8) rotate(0deg); opacity: 0.6; }
+  50%       { transform: scale(1.1) rotate(180deg); opacity: 1; }
+}
+.concept-sparkle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background:
+    linear-gradient(0deg,   transparent 45%, var(--c-accent, #f59e0b) 45% 55%, transparent 55%),
+    linear-gradient(90deg,  transparent 45%, var(--c-accent, #f59e0b) 45% 55%, transparent 55%);
+  animation: sparkle 1.4s ease-in-out infinite;
+}
+
+/* --- Pixel scanlines overlay --- */
+[data-concept="pixel"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,0.18) 2px 3px);
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: multiply;
+}
+
+/* --- Cosmic starfield (BalanceSummary等で使用可) --- */
+@keyframes twinkle {
+  from { opacity: 0.3; }
+  to   { opacity: 0.7; }
+}
+[data-concept="cosmic"] .concept-starfield {
+  display: block;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, white 50%, transparent),
+    radial-gradient(1px 1px at 80% 60%, white 50%, transparent),
+    radial-gradient(2px 2px at 10% 70%, white 50%, transparent),
+    radial-gradient(1px 1px at 65% 25%, oklch(0.78 0.18 195) 50%, transparent),
+    radial-gradient(1px 1px at 90% 90%, oklch(0.72 0.22 320) 50%, transparent);
+  opacity: 0.5;
+  animation: twinkle 4s ease-in-out infinite alternate;
+}
+
+/* ============================================================
+   既存 EXPO パレット（以下はそのまま）
+   ============================================================ */
+
 :root {
   /* === EXPO 2025 Palette === */
   --expo-red: #E60012;      /* 細胞・いのちの輝き */
