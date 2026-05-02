@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id                 String             @id
+  displayName        String
+  role               String
+  birthDate          DateTime?
+  gradeOverride      String?
+  exchangeRate       Float?
+  colorToken         String?
+  isActive           Boolean            @default(true)
+  passwordHash       String
+  mustChangePassword Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  requests           Request[]
+  balance            Balance?
+  expenseDeductions  ExpenseDeduction[]
+  cashRequests       CashRequest[]
+  savingsGoals       SavingsGoal[]
+  passkeys           Passkey[]
+  pushSubscriptions  PushSubscription[]
+  auditLogs          AuditLog[]
+  comments           Comment[]
+  scheduledBonuses   ScheduledBonus[]
+  userBadges         UserBadge[]
+  windfall           WindfallIncome[]
+  spending           SpendingRecord[]
+}
+
+model Balance {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id])
+  accumulatedMin Int      @default(0)
+  carryoverMin   Int      @default(0)
+  virtualAmount  Int      @default(0)
+  totalCashed    Int      @default(0)
+  totalDeducted  Int      @default(0)
+  updatedAt      DateTime @updatedAt
+}
+
+model MasterItem {
+  id          String         @id @default(cuid())
+  category    String
+  name        String
+  description String?
+  defaultMin  Int
+  isActive    Boolean        @default(true)
+  overrides   ItemOverride[]
+  requests    Request[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model ItemOverride {
+  id          String     @id @default(cuid())
+  itemId      String
+  item        MasterItem @relation(fields: [itemId], references: [id])
+  userId      String
+  overrideMin Int
+
+  @@unique([itemId, userId])
+}
+
+model Request {
+  id             String            @id @default(cuid())
+  userId         String
+  user           User              @relation(fields: [userId], references: [id])
+  itemId         String
+  item           MasterItem        @relation(fields: [itemId], references: [id])
+  minutes        Int
+  count          Int               @default(1)
+  note           String?
+  studyActualMin Int?
+  status         String            @default("pending")
+  rejectReason   String?
+  requestedAt    DateTime          @default(now())
+  reviewedAt     DateTime?
+  reviewerId     String?
+  settledAt      DateTime?
+  attachments    Attachment[]
+  comments       Comment[]
+  undoToken      RequestUndoToken?
+}
+
+model CashRequest {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  amount       Int
+  fee          Int       @default(500)
+  status       String    @default("pending")
+  rejectReason String?
+  requestedAt  DateTime  @default(now())
+  reviewedAt   DateTime?
+  reviewerId   String?
+  paidAt       DateTime?
+}
+
+model ExpenseDeduction {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  amount       Int
+  reason       String
+  registeredBy String
+  createdAt    DateTime @default(now())
+}
+
+model SettlementLog {
+  id              String   @id @default(cuid())
+  userId          String
+  totalMin        Int
+  convertedAmount Int
+  carryoverMin    Int
+  settledAt       DateTime @default(now())
+}
+
+model SavingsGoal {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  title        String
+  targetAmount Int
+  memo         String?
+  isAchieved   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+// ── Phase A: New Feature Models ──
+
+// 申請への画像添付（任意）
+model Attachment {
+  id        String   @id @default(cuid())
+  requestId String
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  url       String
+  mimeType  String
+  byteSize  Int
+  createdAt DateTime @default(now())
+
+  @@index([requestId])
+}
+
+// 申請ごとのコメントスレッド（親子間メッセージ）
+model Comment {
+  id        String    @id @default(cuid())
+  requestId String
+  request   Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id])
+  body      String
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([requestId, createdAt])
+}
+
+// 監査ログ（誰がいつ何を）
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actor      User     @relation(fields: [actorId], references: [id])
+  action     String
+  targetType String
+  targetId   String
+  diff       String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+}
+
+// Push 購読
+model PushSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// パスキー（WebAuthn）認証情報
+model Passkey {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId String   @unique
+  publicKey    Bytes
+  counter      Int      @default(0)
+  deviceType   String?
+  backedUp     Boolean  @default(false)
+  transports   String?
+  nickname     String?
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+// 定期ボーナス設定（管理者が子供ごとに設定）
+model ScheduledBonus {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label       String
+  type        String    // "monthly" | "birthday"
+  amountYen   Int
+  dayOfMonth  Int?
+  isActive    Boolean   @default(true)
+  lastApplied DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// バッジ定義
+model Badge {
+  id         String      @id
+  label      String
+  icon       String
+  condition  String
+  userBadges UserBadge[]
+}
+
+// ユーザーが獲得したバッジ
+model UserBadge {
+  id       String   @id @default(cuid())
+  userId   String
+  badgeId  String
+  earnedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge    Badge    @relation(fields: [badgeId], references: [id])
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+}
+
+// 臨時収入（お年玉・プレゼント等）
+model WindfallIncome {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount     Int
+  label      String
+  note       String?
+  recordedBy String
+  recordedAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// 支出記録（子供が何にいくら使ったか）
+model SpendingRecord {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount     Int
+  category   String   // "food"|"toy"|"game"|"book"|"outing"|"other"
+  memo       String?
+  recordedAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// 取消（Undo）トークン
+model RequestUndoToken {
+  id        String   @id @default(cuid())
+  requestId String   @unique
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,239 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { Nav } from "@/components/Nav";
+import { Check } from "lucide-react";
+
+type User = { id: string; displayName: string; role: string };
+
+export default function SettingsPage() {
+  const router = useRouter();
+  const [me, setMe] = useState<User | null>(null);
+  const [theme, setTheme] = useState<"auto" | "light" | "dark">("auto");
+  const [fontScale, setFontScale] = useState("1");
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [testSent, setTestSent] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const meRes = await fetch("/api/auth/me");
+      if (!meRes.ok) { router.push("/"); return; }
+      setMe(await meRes.json());
+    })();
+
+    // Load saved preferences
+    const savedTheme = localStorage.getItem("okozukai-theme") as "auto" | "light" | "dark" | null;
+    if (savedTheme) setTheme(savedTheme);
+
+    const savedScale = localStorage.getItem("okozukai-fontscale");
+    if (savedScale) setFontScale(savedScale);
+
+    // Check push subscription
+    if ("serviceWorker" in navigator && "PushManager" in window) {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.pushManager.getSubscription().then((sub) => {
+          setPushEnabled(!!sub);
+        });
+      });
+    }
+  }, [router]);
+
+  const handleThemeChange = (newTheme: "auto" | "light" | "dark") => {
+    setTheme(newTheme);
+    localStorage.setItem("okozukai-theme", newTheme);
+    if (newTheme === "auto") {
+      document.documentElement.removeAttribute("data-theme");
+    } else {
+      document.documentElement.setAttribute("data-theme", newTheme);
+    }
+  };
+
+  const handleFontScale = (scale: string) => {
+    setFontScale(scale);
+    localStorage.setItem("okozukai-fontscale", scale);
+    document.documentElement.style.setProperty("--font-scale", scale);
+  };
+
+  const handlePushToggle = useCallback(async () => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      alert("このブラウザはプッシュ通知に対応していません");
+      return;
+    }
+
+    setPushLoading(true);
+
+    try {
+      const reg = await navigator.serviceWorker.ready;
+
+      if (pushEnabled) {
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) await sub.unsubscribe();
+        setPushEnabled(false);
+      } else {
+        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidKey) {
+          alert("VAPID キーが設定されていません");
+          setPushLoading(false);
+          return;
+        }
+
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: vapidKey,
+        });
+
+        const subJSON = sub.toJSON();
+        await fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            endpoint: sub.endpoint,
+            p256dh: subJSON.keys?.p256dh,
+            auth: subJSON.keys?.auth,
+            userAgent: navigator.userAgent,
+          }),
+        });
+        setPushEnabled(true);
+      }
+    } catch (err) {
+      console.error("Push toggle error:", err);
+      alert("通知設定の変更に失敗しました");
+    } finally {
+      setPushLoading(false);
+    }
+  }, [pushEnabled]);
+
+  const handleTestPush = async () => {
+    await fetch("/api/push/test", { method: "POST" });
+    setTestSent(true);
+    setTimeout(() => setTestSent(false), 3000);
+  };
+
+  const handleBackup = () => {
+    window.location.href = "/api/backup/export";
+  };
+
+  if (!me) return null;
+
+  const isAdmin = me.role === "admin";
+
+  return (
+    <div className="lg:pl-64 min-h-screen">
+      <Nav role={me.role} displayName={me.displayName} />
+      <main className="p-4 pb-24 lg:pb-8 max-w-2xl mx-auto space-y-6">
+        <h1 className="text-2xl font-display mt-2" style={{ color: "var(--expo-blue)" }}>設定</h1>
+
+        {/* テーマ */}
+        <section className="bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+          <h2 className="font-black text-gray-800 dark:text-gray-100 mb-3">テーマ</h2>
+          <div className="flex gap-2">
+            {([
+              { value: "auto", label: "自動" },
+              { value: "light", label: "ライト" },
+              { value: "dark", label: "ダーク" },
+            ] as const).map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => handleThemeChange(opt.value)}
+                className="flex-1 py-3 rounded-xl font-black text-sm transition-all active:scale-95 min-h-[44px]"
+                style={
+                  theme === opt.value
+                    ? { background: "var(--expo-blue)", color: "white", border: "2px solid #0d2d6b" }
+                    : { background: "#f3f4f6", color: "#374151", border: "2px solid #e5e7eb" }
+                }
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* フォントサイズ */}
+        <section className="bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+          <h2 className="font-black text-gray-800 dark:text-gray-100 mb-3">フォントサイズ</h2>
+          <div className="flex gap-2">
+            {([
+              { value: "1", label: "標準" },
+              { value: "1.15", label: "大" },
+              { value: "1.3", label: "特大" },
+            ]).map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => handleFontScale(opt.value)}
+                className="flex-1 py-3 rounded-xl font-black text-sm transition-all active:scale-95 min-h-[44px]"
+                style={
+                  fontScale === opt.value
+                    ? { background: "var(--expo-blue)", color: "white", border: "2px solid #0d2d6b" }
+                    : { background: "#f3f4f6", color: "#374151", border: "2px solid #e5e7eb" }
+                }
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* 通知 */}
+        <section className="bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+          <h2 className="font-black text-gray-800 dark:text-gray-100 mb-3">プッシュ通知</h2>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-gray-700">
+                {pushEnabled ? "通知ON" : "通知OFF"}
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-300">
+                承認・集計の通知を受け取ります
+              </p>
+            </div>
+            <button
+              onClick={handlePushToggle}
+              disabled={pushLoading}
+              className="px-4 py-2 rounded-xl font-black text-sm min-h-[44px] transition-all active:scale-95"
+              style={
+                pushEnabled
+                  ? { background: "#fee2e2", color: "var(--expo-red)", border: "2px solid #fca5a5" }
+                  : { background: "var(--expo-green)", color: "white", border: "2px solid #006633" }
+              }
+            >
+              {pushLoading ? "..." : pushEnabled ? "OFF にする" : "ON にする"}
+            </button>
+          </div>
+          {pushEnabled && (
+            <button
+              onClick={handleTestPush}
+              className="mt-3 w-full py-2 rounded-xl font-bold text-sm border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 active:scale-95 transition-all"
+            >
+              {testSent ? <span className="flex items-center justify-center gap-1"><Check size={14} />送信しました</span> : "テスト通知を送る"}
+            </button>
+          )}
+        </section>
+
+        {/* バックアップ（admin のみ）*/}
+        {isAdmin && (
+          <section className="bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+            <h2 className="font-black text-gray-800 dark:text-gray-100 mb-3">データバックアップ</h2>
+            <button
+              onClick={handleBackup}
+              className="w-full py-3 rounded-xl font-black text-sm text-white min-h-[44px] transition-all active:scale-95"
+              style={{ background: "var(--expo-blue)", border: "2px solid #0d2d6b" }}
+            >
+              JSONエクスポート
+            </button>
+            <p className="text-xs text-gray-400 dark:text-gray-300 mt-2">
+              全テーブルのデータをJSON形式でダウンロードします
+            </p>
+          </section>
+        )}
+
+        {/* 商標注記 */}
+        <p className="text-center text-xs opacity-50 pt-4" style={{ color: "var(--foreground)" }}>
+          本アプリは家庭内私的利用のみを目的とした参照実装です。
+          Pixar/Disney のキャラクター名・配色は着想元として参照しているのみで、
+          いかなる公式・商業利用も意図しません。
+        </p>
+      </main>
+    </div>
+  );
+}
