@@ -7,8 +7,45 @@ datasource db {
   provider = "sqlite"
 }
 
+// ── Enums ──
+
+enum EventCategory {
+  BIRTHDAY
+  TRIP
+  EXAM
+  SCHOOL
+  FAMILY
+  OTHER
+}
+
+enum ParticipantRole {
+  ORGANIZER
+  ATTENDEE
+  OBSERVER
+}
+
+// UserRole は将来的な型付けのために定義。既存の role String フィールドは変更しない
+enum UserRole {
+  PARENT
+  CHILD
+}
+
+// ── Core Models ──
+
+model Family {
+  id             String          @id @default(cuid())
+  name           String
+  createdAt      DateTime        @default(now())
+  users          User[]
+  virtualMembers VirtualMember[]
+  events         Event[]
+  templates      EventTemplate[]
+}
+
 model User {
   id                 String             @id
+  familyId           String
+  family             Family             @relation(fields: [familyId], references: [id])
   displayName        String
   role               String
   birthDate          DateTime?
@@ -32,6 +69,10 @@ model User {
   userBadges         UserBadge[]
   windfall           WindfallIncome[]
   spending           SpendingRecord[]
+  createdEvents      Event[]            @relation("EventCreatedBy")
+  eventComments      EventComment[]
+  eventReactions     EventReaction[]
+  eventParticipants  EventParticipant[]
 }
 
 model Balance {
@@ -124,14 +165,18 @@ model SettlementLog {
 }
 
 model SavingsGoal {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id])
-  title        String
-  targetAmount Int
-  memo         String?
-  isAchieved   Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id])
+  title                String
+  targetAmount         Int
+  memo                 String?
+  isAchieved           Boolean   @default(false)
+  targetDate           DateTime?
+  linkedEventId        String?
+  linkedEvent          Event?    @relation(fields: [linkedEventId], references: [id])
+  dailySuggestedAmount Int?
+  createdAt            DateTime  @default(now())
 }
 
 // ── Phase A: New Feature Models ──
@@ -283,4 +328,106 @@ model RequestUndoToken {
   request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+// ── Phase 1: Calendar & Family Models ──
+
+// イベントテンプレート（誕生日・テスト・旅行など）
+model EventTemplate {
+  id              String        @id @default(cuid())
+  familyId        String?
+  family          Family?       @relation(fields: [familyId], references: [id])
+  name            String
+  category        EventCategory
+  defaultBudget   Int?
+  defaultLeadDays Int?
+  description     String?
+  events          Event[]
+}
+
+// 家族カレンダーイベント
+model Event {
+  id            String               @id @default(cuid())
+  familyId      String
+  family        Family               @relation(fields: [familyId], references: [id])
+  title         String
+  description   String?
+  startAt       DateTime
+  endAt         DateTime?
+  allDay        Boolean              @default(false)
+  location      String?
+  category      EventCategory
+  createdById   String
+  createdBy     User                 @relation("EventCreatedBy", fields: [createdById], references: [id])
+  templateId    String?
+  template      EventTemplate?       @relation(fields: [templateId], references: [id])
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  participants  EventParticipant[]
+  comments      EventComment[]
+  reactions     EventReaction[]
+  retrospective EventRetrospective?
+  savingsGoals  SavingsGoal[]
+
+  @@index([familyId, startAt])
+}
+
+// イベント参加者（実ユーザーまたは仮想メンバー）
+model EventParticipant {
+  id              String          @id @default(cuid())
+  eventId         String
+  event           Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?           @relation(fields: [userId], references: [id])
+  virtualMemberId String?
+  virtualMember   VirtualMember?  @relation(fields: [virtualMemberId], references: [id])
+  role            ParticipantRole
+}
+
+// スマホ未所持の家族メンバー（祖父母など）
+model VirtualMember {
+  id           String             @id @default(cuid())
+  familyId     String
+  family       Family             @relation(fields: [familyId], references: [id])
+  displayName  String
+  colorTag     String?
+  createdAt    DateTime           @default(now())
+  participants EventParticipant[]
+}
+
+// イベントコメント（親子間コミュニケーション）
+model EventComment {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([eventId, createdAt])
+}
+
+// イベントリアクション（絵文字による軽量コミュニケーション）
+model EventReaction {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId, emoji])
+}
+
+// イベント振り返り
+model EventRetrospective {
+  id            String   @id @default(cuid())
+  eventId       String   @unique
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  plannedAmount Int?
+  actualAmount  Int?
+  note          String?
+  createdAt     DateTime @default(now())
 }

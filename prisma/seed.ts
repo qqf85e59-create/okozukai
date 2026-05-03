@@ -7,6 +7,13 @@ const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? "file
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
+  // Family (upsert default family used by all seed users)
+  const defaultFamily = await prisma.family.upsert({
+    where: { id: "default_family_001" },
+    update: {},
+    create: { id: "default_family_001", name: "デフォルト家族" },
+  });
+
   // Users
   const users = [
     { id: "shina", displayName: "しいな", role: "approver", password: "shina123", birthDate: null },
@@ -24,6 +31,7 @@ async function main() {
       update: { role: u.role },  // always sync role on re-seed
       create: {
         id: u.id,
+        familyId: defaultFamily.id,
         displayName: u.displayName,
         role: u.role,
         birthDate: u.birthDate,
