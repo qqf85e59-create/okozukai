@@ -12,3 +12,11 @@ export function formatYen(yen: number): string {
   const sign = yen < 0 ? "△" : "";
   return `${sign}${abs.toLocaleString("ja-JP")}円`;
 }
+
+export function formatSignedMin(min: number): string {
+  return min > 0 ? `+${formatMin(min)}` : formatMin(min);
+}
+
+export function formatSignedYen(yen: number): string {
+  return yen > 0 ? `+${formatYen(yen)}` : formatYen(yen);
+}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { isChild } from "@/lib/auth";
+import { isChild, isApprover } from "@/lib/auth";
 import { cashOut } from "@/lib/ledger";
 import { audit } from "@/lib/audit";
 
@@ -21,12 +21,15 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const userId = req.headers.get("x-user-id") ?? "";
+  const requesterId = req.headers.get("x-user-id") ?? "";
   const role = req.headers.get("x-user-role") ?? "";
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!isChild(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!requesterId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isChild(role) && !isApprover(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
+
+  // 親が代理で換金する場合は body.userId を使う
+  const userId = (isApprover(role) && body.userId) ? body.userId : requesterId;
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -34,7 +37,7 @@ export async function POST(req: NextRequest) {
   const approver = await prisma.user.findFirst({
     where: { familyId: user.familyId, role: { in: ["approver", "admin"] } },
   });
-  const approvedById = approver?.id ?? userId;
+  const approvedById = isApprover(role) ? requesterId : (approver?.id ?? requesterId);
 
   try {
     const { grossYen, feeYen, netYen } = await cashOut(userId, approvedById, body.note);

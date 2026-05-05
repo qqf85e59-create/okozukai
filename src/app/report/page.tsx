@@ -435,6 +435,40 @@ function ChildReportColumn({ child, report, loading }: { child: Child; report: R
   );
 }
 
+/* ── 週ビュー：家族グリッド1列分 ── */
+function ChildWeeklyColumn({ child, data, loading }: { child: Child; data: WeeklyData | undefined; loading: boolean }) {
+  const total = data?.weekTotal;
+  return (
+    <div className="space-y-3">
+      <h3 className="font-display text-sm text-center py-2 rounded-xl text-white" style={{ background: "var(--expo-blue)" }}>
+        {child.displayName}
+      </h3>
+      <div className="grid grid-cols-1 gap-2">
+        {[
+          { label: "勉強時間", value: loading ? "—" : formatMinutes(total?.studyMin ?? 0), color: "#6366F1" },
+          { label: "タスク数", value: loading ? "—" : `${total?.taskCount ?? 0}件`, color: "#10b981" },
+          { label: "獲得分", value: loading ? "—" : `${total?.earnedMin ?? 0}分`, color: "#f59e0b" },
+        ].map((c) => (
+          <div key={c.label} className="bg-white dark:bg-gray-900 rounded-xl p-3 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400">{c.label}</p>
+            <p className="font-black text-base" style={{ color: c.color }}>{c.value}</p>
+          </div>
+        ))}
+      </div>
+      {!loading && data && (
+        <div className="bg-white dark:bg-gray-900 rounded-xl p-3 shadow-sm border border-gray-100 dark:border-gray-700 min-h-[100px]">
+          <BarChart
+            data={data.dailyStats.map((d) => ({ label: d.label, value: d.studyMin }))}
+            color="#6366F1"
+            formatValue={(v) => formatMinutes(v)}
+            emptyLabel="記録なし"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ReportPage() {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
@@ -460,9 +494,13 @@ export default function ReportPage() {
   const [loadingYear, setLoadingYear] = useState(false);
   const [reportYear, setReportYear] = useState(now.getFullYear());
 
-  // 親用マルチカラム
+  // 親用マルチカラム（月）
   const [allReports, setAllReports] = useState<Record<string, ReportData>>({});
   const [loadingAll, setLoadingAll] = useState(false);
+
+  // 親用マルチカラム（週）
+  const [allWeeklyData, setAllWeeklyData] = useState<Record<string, WeeklyData>>({});
+  const [loadingAllWeekly, setLoadingAllWeekly] = useState(false);
 
   const isParent = me?.role === "approver" || me?.role === "admin";
   const currentUserId = me?.role === "child" ? (me?.id ?? "") : selectedChild;
@@ -497,6 +535,20 @@ export default function ReportPage() {
     const res = await fetch(`/api/report/weekly?${params}`);
     if (res.ok) setWeeklyData(await res.json());
     setLoadingWeek(false);
+  }, [weekBaseDate]);
+
+  const fetchAllWeekly = useCallback(async (kids: Child[]) => {
+    if (kids.length === 0) return;
+    setLoadingAllWeekly(true);
+    const results = await Promise.all(
+      kids.map((c) =>
+        fetch(`/api/report/weekly?date=${weekBaseDate}&userId=${c.id}`)
+          .then((r) => r.json())
+          .then((data) => [c.id, data] as [string, WeeklyData])
+      )
+    );
+    setAllWeeklyData(Object.fromEntries(results));
+    setLoadingAllWeekly(false);
   }, [weekBaseDate]);
 
   const fetchYearly = useCallback(async (targetUserId: string) => {
@@ -550,8 +602,9 @@ export default function ReportPage() {
     if (!me || period !== "week") return;
     const target = me.role === "child" ? me.id : selectedChild;
     if (target) fetchWeekly(target);
+    if (isParent && children.length > 1) fetchAllWeekly(children);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekBaseDate, selectedChild, me, period]);
+  }, [weekBaseDate, selectedChild, me, period, children]);
 
   // 年変更
   useEffect(() => {
@@ -566,7 +619,10 @@ export default function ReportPage() {
     if (!me) return;
     const target = me.role === "child" ? me.id : selectedChild;
     if (!target) return;
-    if (period === "week" && !weeklyData) fetchWeekly(target);
+    if (period === "week") {
+      if (!weeklyData) fetchWeekly(target);
+      if (isParent && children.length > 1 && Object.keys(allWeeklyData).length === 0) fetchAllWeekly(children);
+    }
     if (period === "year" && !yearlyData) fetchYearly(target);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
@@ -695,7 +751,30 @@ export default function ReportPage() {
         )}
 
         {/* ── 週ビュー ── */}
-        {period === "week" && <WeekView data={weeklyData} loading={loadingWeek} />}
+        {period === "week" && (
+          <>
+            {/* モバイル/タブレット or 子供：1人ビュー */}
+            <div className={isParent && children.length > 1 ? "lg:hidden" : ""}>
+              <WeekView data={weeklyData} loading={loadingWeek} />
+            </div>
+            {/* lg+：家族グリッド */}
+            {isParent && children.length > 1 && (
+              <div
+                className="hidden lg:grid gap-6"
+                style={{ gridTemplateColumns: `repeat(${Math.min(children.length, 4)}, 1fr)` }}
+              >
+                {children.map((c) => (
+                  <ChildWeeklyColumn
+                    key={c.id}
+                    child={c}
+                    data={allWeeklyData[c.id]}
+                    loading={loadingAllWeekly || !allWeeklyData[c.id]}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
 
         {/* ── 月ビュー ── */}
         {period === "month" && (
