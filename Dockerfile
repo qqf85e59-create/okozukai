@@ -26,7 +26,9 @@ RUN npm run build
 # シード用スクリプトをコンパイル（ESM + CJS グローバルポリフィル）
 RUN npx --yes esbuild prisma/seed.ts --bundle --platform=node --format=esm \
     --external:@prisma/client --external:bcryptjs \
-    "--banner:js=import { createRequire as _cr } from 'module'; import { fileURLToPath as _fup } from 'url'; import { dirname as _dn } from 'path'; const require = _cr(import.meta.url); const __filename = _fup(import.meta.url); const __dirname = _dn(__filename);" \
+    --external:@prisma/adapter-better-sqlite3 --external:better-sqlite3 \
+    --external:dotenv \
+    "--banner:js=import { createRequire as _cr } from 'module'; const require = _cr(import.meta.url);" \
     --outfile=seed-compiled.mjs
 
 # ── ランタイムステージ ─────────────────────────────────────
