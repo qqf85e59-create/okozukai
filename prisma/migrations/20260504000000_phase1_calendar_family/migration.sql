@@ -22,8 +22,7 @@ VALUES ('default_family_001', 'デフォルト家族', CURRENT_TIMESTAMP);
 --    SQLite requires DEFAULT for NOT NULL column addition.
 --    All existing rows get default_family_001.
 -- ─────────────────────────────────────────────────
-ALTER TABLE "User" ADD COLUMN "familyId" TEXT NOT NULL DEFAULT 'default_family_001'
-    REFERENCES "Family"("id");
+ALTER TABLE "User" ADD COLUMN "familyId" TEXT NOT NULL DEFAULT 'default_family_001';
 
 -- ─────────────────────────────────────────────────
 -- 4. Create VirtualMember table

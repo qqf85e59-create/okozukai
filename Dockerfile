@@ -24,7 +24,7 @@ ENV JWT_SECRET="build-placeholder-not-used-at-runtime"
 RUN npm run build
 
 # シード用スクリプトをコンパイル
-RUN npx --yes esbuild prisma/seed.ts --bundle --platform=node --format=esm --external:@prisma/client --external:bcryptjs --outfile=seed-compiled.mjs
+RUN npx --yes esbuild prisma/seed.ts --bundle --platform=node --format=cjs --external:@prisma/client --external:bcryptjs --outfile=seed-compiled.cjs
 
 # ── ランタイムステージ ─────────────────────────────────────
 FROM node:20-slim AS runner
@@ -51,7 +51,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 # マイグレーション実行に必要な Prisma ファイル群
 COPY --from=builder --chown=nextjs:nodejs /app/prisma          ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
-COPY --from=builder --chown=nextjs:nodejs /app/seed-compiled.mjs ./seed-compiled.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/seed-compiled.cjs ./seed-compiled.cjs
 
 # 起動スクリプト
 COPY --chown=nextjs:nodejs entrypoint.sh ./entrypoint.sh
