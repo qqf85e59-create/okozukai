@@ -8,7 +8,7 @@ gosu nextjs npx prisma migrate deploy
 echo "✓ Migrations done."
 
 echo "▶ Seeding initial data..."
-gosu nextjs node seed-compiled.mjs && echo "✓ Seed done." || echo "⚠ Seed failed, continuing..."
+gosu nextjs npx tsx prisma/seed.ts && echo "✓ Seed done." || echo "⚠ Seed failed, continuing..."
 
 echo "▶ Starting Next.js..."
 exec gosu nextjs npm start

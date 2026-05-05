@@ -23,14 +23,6 @@ ENV JWT_SECRET="build-placeholder-not-used-at-runtime"
 
 RUN npm run build
 
-# シード用スクリプトをコンパイル（ESM + CJS グローバルポリフィル）
-RUN npx --yes esbuild prisma/seed.ts --bundle --platform=node --format=esm \
-    --external:@prisma/client --external:bcryptjs \
-    --external:@prisma/adapter-better-sqlite3 --external:better-sqlite3 \
-    --external:dotenv \
-    "--banner:js=import { createRequire as _cr } from 'module'; const require = _cr(import.meta.url);" \
-    --outfile=seed-compiled.mjs
-
 # ── ランタイムステージ ─────────────────────────────────────
 FROM node:20-slim AS runner
 
@@ -56,7 +48,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 # マイグレーション実行に必要な Prisma ファイル群
 COPY --from=builder --chown=nextjs:nodejs /app/prisma          ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
-COPY --from=builder --chown=nextjs:nodejs /app/seed-compiled.mjs ./seed-compiled.mjs
+
+# seed.ts が参照する生成済み Prisma クライアント
+COPY --from=builder --chown=nextjs:nodejs /app/src/generated ./src/generated
 
 # 起動スクリプト（root で実行して /data パーミッションを修正してから nextjs に降格）
 COPY entrypoint.sh ./entrypoint.sh
