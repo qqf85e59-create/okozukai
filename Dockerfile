@@ -26,7 +26,7 @@ RUN npm run build
 # シード用スクリプトをコンパイル（ESM + CJS グローバルポリフィル）
 RUN npx --yes esbuild prisma/seed.ts --bundle --platform=node --format=esm \
     --external:@prisma/client --external:bcryptjs \
-    "--banner:js=import { createRequire } from 'module'; import { fileURLToPath } from 'url'; import { dirname } from 'path'; const require = createRequire(import.meta.url); const __filename = fileURLToPath(import.meta.url); const __dirname = dirname(__filename);" \
+    "--banner:js=import { createRequire as _cr } from 'module'; import { fileURLToPath as _fup } from 'url'; import { dirname as _dn } from 'path'; const require = _cr(import.meta.url); const __filename = _fup(import.meta.url); const __dirname = _dn(__filename);" \
     --outfile=seed-compiled.mjs
 
 # ── ランタイムステージ ─────────────────────────────────────

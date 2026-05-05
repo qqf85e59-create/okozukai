@@ -133,6 +133,5 @@ CREATE UNIQUE INDEX "EventRetrospective_eventId_key" ON "EventRetrospective"("ev
 -- 11. Extend SavingsGoal with new optional fields
 -- ─────────────────────────────────────────────────
 ALTER TABLE "SavingsGoal" ADD COLUMN "targetDate" DATETIME;
-ALTER TABLE "SavingsGoal" ADD COLUMN "linkedEventId" TEXT
-    REFERENCES "Event"("id");
+ALTER TABLE "SavingsGoal" ADD COLUMN "linkedEventId" TEXT;
 ALTER TABLE "SavingsGoal" ADD COLUMN "dailySuggestedAmount" INTEGER;
