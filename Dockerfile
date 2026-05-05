@@ -23,14 +23,17 @@ ENV JWT_SECRET="build-placeholder-not-used-at-runtime"
 
 RUN npm run build
 
-# シード用スクリプトをコンパイル
-RUN npx --yes esbuild prisma/seed.ts --bundle --platform=node --format=cjs --external:@prisma/client --external:bcryptjs --outfile=seed-compiled.cjs
+# シード用スクリプトをコンパイル（ESM + createRequire で import.meta.url を有効化）
+RUN npx --yes esbuild prisma/seed.ts --bundle --platform=node --format=esm \
+    --external:@prisma/client --external:bcryptjs \
+    "--banner:js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);" \
+    --outfile=seed-compiled.mjs
 
 # ── ランタイムステージ ─────────────────────────────────────
 FROM node:20-slim AS runner
 
 RUN apt-get update -y && \
-    apt-get install -y openssl && \
+    apt-get install -y openssl gosu && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -51,13 +54,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 # マイグレーション実行に必要な Prisma ファイル群
 COPY --from=builder --chown=nextjs:nodejs /app/prisma          ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
-COPY --from=builder --chown=nextjs:nodejs /app/seed-compiled.cjs ./seed-compiled.cjs
+COPY --from=builder --chown=nextjs:nodejs /app/seed-compiled.mjs ./seed-compiled.mjs
 
-# 起動スクリプト
-COPY --chown=nextjs:nodejs entrypoint.sh ./entrypoint.sh
+# 起動スクリプト（root で実行して /data パーミッションを修正してから nextjs に降格）
+COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
-USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
