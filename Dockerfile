@@ -23,10 +23,10 @@ ENV JWT_SECRET="build-placeholder-not-used-at-runtime"
 
 RUN npm run build
 
-# シード用スクリプトをコンパイル（ESM + createRequire で import.meta.url を有効化）
+# シード用スクリプトをコンパイル（ESM + CJS グローバルポリフィル）
 RUN npx --yes esbuild prisma/seed.ts --bundle --platform=node --format=esm \
     --external:@prisma/client --external:bcryptjs \
-    "--banner:js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);" \
+    "--banner:js=import { createRequire } from 'module'; import { fileURLToPath } from 'url'; import { dirname } from 'path'; const require = createRequire(import.meta.url); const __filename = fileURLToPath(import.meta.url); const __dirname = dirname(__filename);" \
     --outfile=seed-compiled.mjs
 
 # ── ランタイムステージ ─────────────────────────────────────
