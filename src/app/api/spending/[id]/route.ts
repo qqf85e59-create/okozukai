@@ -10,12 +10,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!record) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (record.userId !== userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  await prisma.$transaction(async (tx) => {
-    await tx.spendingRecord.delete({ where: { id } });
-    await tx.balance.update({
-      where: { userId: record.userId },
-      data: { virtualAmount: { increment: record.amount } },
-    });
+  await prisma.spendingRecord.delete({ where: { id } });
+
+  await prisma.balance.update({
+    where: { userId: record.userId },
+    data: { virtualAmount: { increment: record.amount } },
   });
 
   return NextResponse.json({ ok: true });

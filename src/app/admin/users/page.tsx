@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Toast } from "@/components/Toast";
-import { Users, X, Save, AlertTriangle, Gift, Plus, Trash2 } from "lucide-react";
+import { Users, X, Save, AlertTriangle, Gift, Plus, Trash2, SlidersHorizontal } from "lucide-react";
 
 type ScheduledBonus = {
   id: string;
@@ -544,6 +544,17 @@ export default function AdminUsersPage() {
                 <Save size={16} />
                 {saving ? "保存中..." : "保存する"}
               </button>
+              {selected.role === "child" && (
+                <button
+                  type="button"
+                  onClick={() => router.push(`/admin/users/${selected.id}/overrides`)}
+                  className="w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 text-gray-600 dark:text-gray-300"
+                  style={{ border: "2px solid #d1d5db" }}
+                >
+                  <SlidersHorizontal size={16} />
+                  個別時間設定
+                </button>
+              )}
             </form>
           </div>
         </div>

@@ -188,6 +188,118 @@ async function main() {
     create: { itemId: "pen_15", userId: "setsuna", overrideMin: -10 },
   });
 
+  // ── ChoreItem ──
+  const choreItemsData = [
+    // おてつだい
+    { id: "ci_0",  category: "おてつだい", name: "お使い（おつかい）（ビッグ・イオン）",                            bonusMinutes: 50 },
+    { id: "ci_1",  category: "おてつだい", name: "お使い（おつかい）（マツキヨ）",                                  bonusMinutes: 30 },
+    { id: "ci_2",  category: "おてつだい", name: "お使い（おつかい）（はしごした場合（ばあい））",                   bonusMinutes: 60 },
+    { id: "ci_3",  category: "おてつだい", name: "カーテン開け・閉め（あけ・しめ）",                                bonusMinutes: 5  },
+    { id: "ci_4",  category: "おてつだい", name: "テーブル拭き（ふき）",                                            bonusMinutes: 5  },
+    { id: "ci_5",  category: "おてつだい", name: "玄関掃除（げんかんそうじ）",                                      bonusMinutes: 10 },
+    { id: "ci_6",  category: "おてつだい", name: "ときせつのおむつ替え（おむつがえ）（おしっこ）",                  bonusMinutes: 5  },
+    { id: "ci_7",  category: "おてつだい", name: "ときせつのおむつ替え（おむつがえ）（うんち）",                    bonusMinutes: 10 },
+    { id: "ci_8",  category: "おてつだい", name: "ときせつのお風呂の世話（おふろのせわ）",                          bonusMinutes: 10 },
+    { id: "ci_9",  category: "おてつだい", name: "ときせつのお風呂支度（おふろしたく）（脱がす〜着替えまで）",      bonusMinutes: 15 },
+    { id: "ci_10", category: "おてつだい", name: "ゴミ捨て（ごみすて）",                                            bonusMinutes: 5  },
+    { id: "ci_11", category: "おてつだい", name: "カーテン取る・付ける（とる・つける）（1か所）",                   bonusMinutes: 10 },
+    { id: "ci_12", category: "おてつだい", name: "朝ご飯を作る（あさごはんをつくる）",                              bonusMinutes: 5  },
+    { id: "ci_13", category: "おてつだい", name: "ソファ・カーペットコロコロ（カバーも）",                          bonusMinutes: 15 },
+    { id: "ci_14", category: "おてつだい", name: "ときせつのおもちゃ片付け（かたづけ）",                            bonusMinutes: 8  },
+    { id: "ci_15", category: "おてつだい", name: "床掃除（ゆかそうじ）（全部屋・廊下・階段・洗面所）",              bonusMinutes: 50 }, // ★ 暫定値 要確認
+    { id: "ci_16", category: "おてつだい", name: "床の水拭き（ゆかのみずぶき）（全部屋・廊下・階段・洗面所）",      bonusMinutes: 60 },
+    { id: "ci_17", category: "おてつだい", name: "トイレ掃除（そうじ）",                                            bonusMinutes: 15 },
+    { id: "ci_18", category: "おてつだい", name: "お風呂掃除（おふろそうじ）（タイル・サッシ・カビ）",              bonusMinutes: 20 },
+    { id: "ci_19", category: "おてつだい", name: "お風呂掃除（おふろそうじ）（網戸もセット）",                      bonusMinutes: 40 },
+    { id: "ci_20", category: "おてつだい", name: "窓拭き・サッシ掃除（まどふき・さっしそうじ）（全部）",           bonusMinutes: 40 },
+    { id: "ci_21", category: "おてつだい", name: "茶碗洗い（ちゃわんあらい）",                                      bonusMinutes: 15 },
+    { id: "ci_22", category: "おてつだい", name: "洗濯物のたたみ（せんたくもののたたみ）",                          bonusMinutes: 15 },
+    { id: "ci_23", category: "おてつだい", name: "洗濯物干し（せんたくものほし）",                                  bonusMinutes: 15 },
+    { id: "ci_24", category: "おてつだい", name: "普段のお風呂掃除（ふだんのおふろそうじ）",                        bonusMinutes: 10 },
+    { id: "ci_25", category: "おてつだい", name: "ミルク（げっぷまで）",                                            bonusMinutes: 10 },
+    { id: "ci_26", category: "おてつだい", name: "ときの歯磨き（はみがき）",                                        bonusMinutes: 10 },
+    { id: "ci_27", category: "おてつだい", name: "ときの寝る支度（ねるしたく）（スリーパー・ベッドまで）",          bonusMinutes: 5  },
+    { id: "ci_28", category: "おてつだい", name: "ときのトイレの手伝い（てつだい）",                                bonusMinutes: 5  },
+    { id: "ci_29", category: "おてつだい", name: "米とぎ（こめとぎ）",                                              bonusMinutes: 10 },
+    { id: "ci_30", category: "おてつだい", name: "洗面所掃除（せんめんじょそうじ）",                                bonusMinutes: 22 },
+    // べんきょう
+    { id: "ci_31", category: "べんきょう", name: "勉強時間（実時間申請）",                               bonusMinutes: 0  },
+    { id: "ci_32", category: "べんきょう", name: "テスト100点",                                          bonusMinutes: 15 },
+    { id: "ci_33", category: "べんきょう", name: "テスト90点以上",                                       bonusMinutes: 8  },
+  ];
+
+  for (let i = 0; i < choreItemsData.length; i++) {
+    const c = choreItemsData[i];
+    await prisma.choreItem.upsert({
+      where: { id: c.id },
+      update: { name: c.name, bonusMinutes: c.bonusMinutes, sortOrder: i },
+      create: {
+        id: c.id,
+        familyId: defaultFamily.id,
+        category: c.category,
+        name: c.name,
+        bonusMinutes: c.bonusMinutes,
+        mode: "FIXED",
+        sortOrder: i,
+      },
+    });
+  }
+
+  // ── PenaltyItem ──
+  const penaltyItemsData: { id: string; name: string; penaltyMinutes: number; mode?: "FIXED" | "PROPORTIONAL"; unitLabel?: string }[] = [
+    { id: "pi_0",  name: "決めつけた（きめつけた）",                                                       penaltyMinutes: 10  },
+    { id: "pi_1",  name: "朝（あさ）8時前にときせつが寝ている間（あいだ）のバスケ",                       penaltyMinutes: 60  },
+    { id: "pi_2",  name: "最初（さいしょ）に「ちがう」といった",                                          penaltyMinutes: 10  },
+    { id: "pi_3",  name: "突発的（とっぱつてき）にウソをつく",                                            penaltyMinutes: 10  },
+    { id: "pi_4",  name: "同じ（おなじ）ことを3回注意（ちゅうい）された",                                 penaltyMinutes: 10  },
+    { id: "pi_5",  name: "下着（したぎ）を着ないで洗面所（せんめんじょ）から出た",                       penaltyMinutes: 10  },
+    { id: "pi_6",  name: "石（いし）を投げる（なげる）",                                                  penaltyMinutes: 30  },
+    { id: "pi_7",  name: "カーテン（子ども部屋（こどもべや））・マットレス片付け忘れ（かたづけわすれ）",  penaltyMinutes: 10  },
+    { id: "pi_8",  name: "世話（せわ）を引き受けた（ひきうけた）のに最後（さいご）までやらない",          penaltyMinutes: 60  },
+    { id: "pi_9",  name: "歯（は）を磨かない（みがかない）",                                              penaltyMinutes: 60  },
+    { id: "pi_10", name: "夜（よる）8時までに子ども部屋（こどもべや）を片付けない（かたづけない）（1つにつき）", penaltyMinutes: 20 },
+    { id: "pi_11", name: "ときを起こす（おこす）",                                                        penaltyMinutes: 300 },
+    { id: "pi_12", name: "ウソの報告（ほうこく）",                                                        penaltyMinutes: 600 },
+    { id: "pi_13", name: "ウソをつく",                                                                     penaltyMinutes: 60  },
+    { id: "pi_14", name: "暴力（ぼうりょく）",                                                             penaltyMinutes: 60  },
+    { id: "pi_15", name: "物（もの）にあたる（人（ひと）の物（もの））",                                  penaltyMinutes: 60  },
+    { id: "pi_16", name: "物（もの）にあたる（自分（じぶん）の物（もの））",                              penaltyMinutes: 30  },
+    { id: "pi_17", name: "人（ひと）のせいにする",                                                        penaltyMinutes: 30  },
+    { id: "pi_18", name: "走り回ってはいけない所で走り回る",                                              penaltyMinutes: 10  },
+    { id: "pi_19", name: "片手（かたて）でご飯（ごはん）を食べる（たべる）",                              penaltyMinutes: 10  },
+    { id: "pi_20", name: "足を立てて食べる",                                                               penaltyMinutes: 10  },
+    { id: "pi_21", name: "イス・ソファの上に立つ",                                                        penaltyMinutes: 10  },
+    { id: "pi_22", name: "ご飯（ごはん）を残す（のこす）",                                                penaltyMinutes: 10  },
+    { id: "pi_23", name: "時間（じかん）オーバー（登校（とうこう）・習い事（ならいごと）・寝る時間など）1つにつき", penaltyMinutes: 10 },
+    { id: "pi_24", name: "出した物（もの）を片付けない（かたづけない）（1つにつき）",                     penaltyMinutes: 20  },
+    { id: "pi_25", name: "人（ひと）の物（もの）を勝手（かって）に使う（つかう）",                        penaltyMinutes: 10  },
+    { id: "pi_26", name: "勉強（べんきょう）の答え（こたえ）を教え合う（おしえあう）",                    penaltyMinutes: 10  },
+    { id: "pi_27", name: "靴（くつ）のかかとを踏む（ふむ）",                                              penaltyMinutes: 10  },
+    { id: "pi_28", name: "ご飯中（ごはんちゅう）に立ち歩く（たちあるく）",                                penaltyMinutes: 10  },
+    { id: "pi_29", name: "借金（しゃっきん）5万円以上で外出禁止を破る",                                   penaltyMinutes: 300 },
+    { id: "pi_30", name: "勝手（かって）にスマホなどを2階（にかい）に持っていく（もっていく）",           penaltyMinutes: 60  },
+    { id: "pi_31", name: "勝手（かって）に動画（どうが）を見る（みる）・ゲームをする",                    penaltyMinutes: 600 },
+    { id: "pi_32", name: "人（ひと）につばをかける",                                                      penaltyMinutes: 60  },
+    { id: "pi_33", name: "決められた（きめられた）時間（じかん）以降（いこう）に話す（はなす）",           penaltyMinutes: 20, mode: "PROPORTIONAL", unitLabel: "分超過ごとに" },
+  ];
+
+  for (let i = 0; i < penaltyItemsData.length; i++) {
+    const p = penaltyItemsData[i];
+    await prisma.penaltyItem.upsert({
+      where: { id: p.id },
+      update: { name: p.name, penaltyMinutes: p.penaltyMinutes, sortOrder: i },
+      create: {
+        id: p.id,
+        familyId: defaultFamily.id,
+        name: p.name,
+        penaltyMinutes: p.penaltyMinutes,
+        mode: p.mode ?? "FIXED",
+        unitLabel: p.unitLabel ?? null,
+        sortOrder: i,
+      },
+    });
+  }
+
   console.log("Seed completed successfully.");
 }
 

@@ -20,26 +20,20 @@ export async function PUT(
     return NextResponse.json({ error: "承認待ち以外の申請は操作できません" }, { status: 400 });
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.request.update({
-      where: { id },
-      data: { status: "approved", reviewedAt: new Date(), reviewerId },
-    });
+  await prisma.request.update({
+    where: { id },
+    data: { status: "approved", reviewedAt: new Date(), reviewerId },
+  });
 
-    await tx.balance.update({
-      where: { userId: request.userId },
-      data: { accumulatedMin: { increment: request.minutes } },
-    });
+  await prisma.balance.update({
+    where: { userId: request.userId },
+    data: { accumulatedMin: { increment: request.minutes } },
+  });
 
-    // Create undo token (10 min)
-    await tx.requestUndoToken.upsert({
-      where: { requestId: id },
-      update: { expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
-      create: {
-        requestId: id,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-      },
-    });
+  await prisma.requestUndoToken.upsert({
+    where: { requestId: id },
+    update: { expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
+    create: { requestId: id, expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
   });
 
   await audit(reviewerId, "request.approve", "Request", id, { minutes: request.minutes });

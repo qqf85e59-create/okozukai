@@ -36,36 +36,29 @@ export async function POST(
     return NextResponse.json({ error: "すでに集計済みの申請は取消できません" }, { status: 400 });
   }
 
-  await prisma.$transaction(async (tx) => {
-    // Revert status to pending
-    const updated = await tx.request.updateMany({
-      where: {
-        id,
-        ...(previousStatus === "approved" ? { status: "approved", settledAt: null } : { status: "rejected" }),
-      },
-      data: {
-        status: "pending",
-        reviewedAt: null,
-        reviewerId: null,
-        rejectReason: null,
-      },
-    });
-
-    if (updated.count === 0) {
-      throw new Error("更新対象がありません（すでに集計済みか、状態が変更されています）");
-    }
-
-    // If was approved, reverse the balance change
-    if (previousStatus === "approved") {
-      await tx.balance.update({
-        where: { userId: request.userId },
-        data: { accumulatedMin: { decrement: request.minutes } },
-      });
-    }
-
-    // Delete the undo token
-    await tx.requestUndoToken.delete({ where: { requestId: id } });
+  const updated = await prisma.request.updateMany({
+    where: {
+      id,
+      ...(previousStatus === "approved" ? { status: "approved", settledAt: null } : { status: "rejected" }),
+    },
+    data: { status: "pending", reviewedAt: null, reviewerId: null, rejectReason: null },
   });
+
+  if (updated.count === 0) {
+    return NextResponse.json(
+      { error: "更新対象がありません（すでに集計済みか、状態が変更されています）" },
+      { status: 400 }
+    );
+  }
+
+  if (previousStatus === "approved") {
+    await prisma.balance.update({
+      where: { userId: request.userId },
+      data: { accumulatedMin: { decrement: request.minutes } },
+    });
+  }
+
+  await prisma.requestUndoToken.delete({ where: { requestId: id } });
 
   await audit(actorId, "request.undo", "Request", id, {
     previousStatus,

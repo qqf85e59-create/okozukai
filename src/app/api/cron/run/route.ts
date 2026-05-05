@@ -3,6 +3,7 @@ import { runSettlement } from "@/lib/settlement";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { notifyParents, notifyUser } from "@/lib/push";
+import { addYenLedger } from "@/lib/ledger";
 import crypto from "crypto";
 
 // バッジ定義（condition: "streak_N" | "tasks_N" | "earned_N"）
@@ -106,6 +107,7 @@ async function applyScheduledBonuses() {
         where: { userId: bonus.userId },
         data: { virtualAmount: { increment: bonus.amountYen } },
       });
+      await addYenLedger(bonus.userId, bonus.amountYen, "BONUS", { sourceId: bonus.id, note: bonus.label });
       await prisma.scheduledBonus.update({
         where: { id: bonus.id },
         data: { lastApplied: today },
@@ -130,6 +132,7 @@ async function applyScheduledBonuses() {
           where: { userId: bonus.userId },
           data: { virtualAmount: { increment: bonus.amountYen } },
         });
+        await addYenLedger(bonus.userId, bonus.amountYen, "BONUS", { sourceId: bonus.id, note: bonus.label });
         await prisma.scheduledBonus.update({
           where: { id: bonus.id },
           data: { lastApplied: today },
@@ -197,6 +200,32 @@ export async function POST(req: NextRequest) {
     const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
     const deleted = await prisma.auditLog.deleteMany({ where: { createdAt: { lt: cutoff } } });
     return NextResponse.json({ archived: deleted.count });
+  }
+
+  if (task === "reconcile") {
+    const children = await prisma.user.findMany({ where: { role: "child" } });
+    const mismatches: string[] = [];
+    for (const u of children) {
+      const [tlSum, ylSum, bal] = await Promise.all([
+        prisma.timeLedger.aggregate({ where: { userId: u.id }, _sum: { deltaMinutes: true } }),
+        prisma.yenLedger.aggregate({ where: { userId: u.id }, _sum: { deltaYen: true } }),
+        prisma.balance.findUnique({ where: { userId: u.id } }),
+      ]);
+      const expectedMin = tlSum._sum.deltaMinutes ?? 0;
+      const expectedYen = ylSum._sum.deltaYen ?? 0;
+      if (bal && (bal.accumulatedMin !== expectedMin || bal.virtualAmount !== expectedYen)) {
+        mismatches.push(u.id);
+        await audit(actorId, "reconcile.mismatch", "Balance", u.id, {
+          expectedMin, actualMin: bal.accumulatedMin,
+          expectedYen, actualYen: bal.virtualAmount,
+        });
+        await prisma.balance.update({
+          where: { userId: u.id },
+          data: { accumulatedMin: expectedMin, virtualAmount: expectedYen },
+        });
+      }
+    }
+    return NextResponse.json({ ok: true, checked: children.length, mismatches });
   }
 
   return NextResponse.json({ error: "Unknown task" }, { status: 400 });

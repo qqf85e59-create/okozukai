@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, ClipboardList, BookOpen, Coins, BarChart3, Database, Receipt, LogOut, Settings, Users } from "lucide-react";
+import { Home, ClipboardList, BookOpen, Coins, BarChart3, Database, Receipt, LogOut, Settings, Users, Bell, AlertTriangle, ListChecks, Timer, Zap } from "lucide-react";
 import { useConcept } from "@/components/ConceptThemeProvider";
 import { COPY } from "@/lib/copy";
 
@@ -67,19 +67,26 @@ export function Nav({ role, displayName }: Props) {
     { href: "/history",  label: copy.history,  Icon: BookOpen },
     { href: "/cash",     label: copy.cash,     Icon: Coins },
     { href: "/report",   label: copy.report,   Icon: BarChart3 },
+    { href: "/convert",  label: "時間を換算",  Icon: Timer },
+    { href: "/cashout",  label: "換金する",    Icon: Coins },
+    { href: "/consume",  label: "時間を使う",  Icon: Zap },
   ];
 
   const PARENT_ITEMS = [
-    { href: "/home",     label: copy.home,     Icon: Home },
-    { href: "/items",    label: copy.items,    Icon: Database },
-    { href: "/expenses", label: copy.expenses, Icon: Receipt },
-    { href: "/history",  label: copy.history,  Icon: BookOpen },
-    { href: "/report",   label: copy.report,   Icon: BarChart3 },
-    { href: "/audit",    label: copy.audit,    Icon: Settings },
+    { href: "/home",          label: copy.home,     Icon: Home },
+    { href: "/approvals",     label: "承認待ち",    Icon: Bell },
+    { href: "/penalties/new", label: "ペナルティ",  Icon: AlertTriangle },
+    { href: "/items",         label: copy.items,    Icon: Database },
+    { href: "/expenses",      label: copy.expenses, Icon: Receipt },
+    { href: "/history",       label: copy.history,  Icon: BookOpen },
+    { href: "/report",        label: copy.report,   Icon: BarChart3 },
+    { href: "/audit",         label: copy.audit,    Icon: Settings },
   ];
 
   const ADMIN_ONLY_ITEMS = [
-    { href: "/admin/users", label: copy.admin, Icon: Users },
+    { href: "/admin/users",         label: copy.admin,        Icon: Users },
+    { href: "/admin/chore-items",   label: "おてつだい項目",  Icon: ListChecks },
+    { href: "/admin/penalty-items", label: "ペナルティ項目",  Icon: AlertTriangle },
   ];
 
   const items = isAdmin

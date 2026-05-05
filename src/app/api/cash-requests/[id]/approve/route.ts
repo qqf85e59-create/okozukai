@@ -18,32 +18,27 @@ export async function PUT(
     return NextResponse.json({ error: "承認待ち以外の申請は操作できません" }, { status: 400 });
   }
 
-  try {
-    await prisma.$transaction(async (tx) => {
-      // 承認時点で残高を再確認（申請後に残高が変動している可能性）
-      const balance = await tx.balance.findUnique({ where: { userId: cashReq.userId } });
-      const totalRequired = cashReq.amount + cashReq.fee;
-      if (!balance || balance.virtualAmount < totalRequired) {
-        throw new Error("残高不足のため承認できません");
-      }
-
-      await tx.cashRequest.update({
-        where: { id },
-        data: { status: "approved", reviewedAt: new Date(), reviewerId },
-      });
-      // 手数料 + 申請額を残高から引く
-      await tx.balance.update({
-        where: { userId: cashReq.userId },
-        data: {
-          virtualAmount: { decrement: totalRequired },
-          totalCashed: { increment: cashReq.amount },
-        },
-      });
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "承認に失敗しました";
-    return NextResponse.json({ error: msg }, { status: 400 });
+  // 承認時点で残高を再確認（申請後に残高が変動している可能性）
+  const balance = await prisma.balance.findUnique({ where: { userId: cashReq.userId } });
+  const totalRequired = cashReq.amount + cashReq.fee;
+  if (!balance || balance.virtualAmount < totalRequired) {
+    return NextResponse.json({ error: "残高不足のため承認できません" }, { status: 400 });
   }
+
+  // Note: prisma.$transaction(async callback) does not commit with the
+  // better-sqlite3 adapter (v7.8.x), so we use sequential awaits instead.
+  await prisma.cashRequest.update({
+    where: { id },
+    data: { status: "approved", reviewedAt: new Date(), reviewerId },
+  });
+
+  await prisma.balance.update({
+    where: { userId: cashReq.userId },
+    data: {
+      virtualAmount: { decrement: totalRequired },
+      totalCashed: { increment: cashReq.amount },
+    },
+  });
 
   return NextResponse.json({ ok: true });
 }

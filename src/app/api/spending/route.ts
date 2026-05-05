@@ -44,19 +44,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "残高が不足しています" }, { status: 400 });
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.spendingRecord.create({
-      data: {
-        userId: targetUserId,
-        amount: Number(amount),
-        category,
-        memo: memo?.trim() || null,
-      },
-    });
-    await tx.balance.update({
-      where: { userId: targetUserId },
-      data: { virtualAmount: { decrement: Number(amount) } },
-    });
+  await prisma.spendingRecord.create({
+    data: { userId: targetUserId, amount: Number(amount), category, memo: memo?.trim() || null },
+  });
+
+  await prisma.balance.update({
+    where: { userId: targetUserId },
+    data: { virtualAmount: { decrement: Number(amount) } },
   });
 
   return NextResponse.json({ ok: true }, { status: 201 });
