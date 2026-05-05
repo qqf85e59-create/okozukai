@@ -9,9 +9,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Toast } from "@/components/Toast";
 import { LabelWithGloss } from "@/components/LabelWithGloss";
 import { ProgressHeatmap } from "@/components/ProgressHeatmap";
-import { ChevronDown, Star, Flame, Trophy, Award, Crown, Coins, Banknote, Target, PlusCircle, ShoppingBag } from "lucide-react";
-import { useConcept } from "@/components/ConceptThemeProvider";
-import { COPY } from "@/lib/copy";
+import { ChevronDown, Star, Flame, Trophy, Award, Crown, Coins, Banknote, Target, PlusCircle, ShoppingBag, Timer, Zap } from "lucide-react";
 
 const BADGE_ICONS: Record<string, React.ElementType> = {
   Flame, Trophy, Star, Award, Crown, Coins, Banknote, Target,
@@ -80,21 +78,12 @@ type UserWithBalance = {
   role: string;
   grade: { gradeLabel: string } | null;
   balance: BalanceData | null;
+  yenBalance: number;
 };
 
-/* ────────────────────────────────── helpers ── */
-function formatMin(min: number) {
-  const abs = Math.abs(min);
-  const h = Math.floor(abs / 60);
-  const m = abs % 60;
-  const sign = min < 0 ? "-" : "+";
-  if (h === 0) return `${sign}${m}分`;
-  return `${sign}${h}時間${m > 0 ? m + "分" : ""}`;
-}
-
-function formatAmount(n: number) {
-  return n.toLocaleString("ja-JP") + "円";
-}
+import { formatMin, formatYen, formatSignedMin } from "@/lib/format";
+import { MINUTES_PER_UNIT, YEN_PER_UNIT } from "@/lib/constants";
+import { Minus, Plus } from "lucide-react";
 
 /* 今週月曜0時 */
 function weekStart() {
@@ -121,15 +110,17 @@ function ItemRow({
 }) {
   const isPenalty = item.category === "penalty";
   const isStudy = item.category === "study";
-  const minColor = isPenalty ? "var(--c-danger, var(--expo-red))" : "var(--c-accent, var(--expo-blue))";
-  const btnBg = isPenalty ? "var(--c-danger, var(--expo-red))" : isStudy ? "var(--c-positive, var(--expo-green))" : "var(--c-accent, var(--expo-blue))";
+  const minColor = isPenalty ? "var(--expo-red)" : "var(--expo-blue)";
+  const btnBg = isPenalty ? "var(--expo-red)" : isStudy ? "var(--expo-green)" : "var(--expo-blue)";
+  const btnBorder = isPenalty ? "#7f1d1d" : isStudy ? "#006633" : "#0d2d6b";
 
   return (
     <div
-      className="mission-row"
+      className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-white dark:bg-gray-800"
+      style={{ border: "1px solid #e5e7eb" }}
     >
       <div className="flex-1 min-w-0">
-        <p className="mission-title leading-snug line-clamp-2" title={item.name}>{item.name}</p>
+        <p className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-snug line-clamp-2" title={item.name}>{item.name}</p>
         {!hideMin && (
           <p className="text-xs font-black mt-0.5" style={{ color: minColor }}>
             {formatMin(item.effectiveMin)}
@@ -139,10 +130,13 @@ function ItemRow({
       {!readOnly && onRequest && (
         <button
           onClick={() => onRequest(item)}
-          className="btn primary shrink-0 text-xs min-w-[52px] min-h-[36px]"
-          style={{ padding: "6px 12px", fontSize: 12 }}
+          className="shrink-0 px-3 py-1.5 rounded-lg font-black text-xs text-white min-w-[52px] min-h-[36px] transition-all active:scale-95"
+          style={{ background: btnBg, border: `1.5px solid ${btnBorder}`, boxShadow: `0 2px 0 ${btnBorder}` }}
+          onMouseDown={(e) => (e.currentTarget.style.transform = "translateY(2px)")}
+          onMouseUp={(e) => (e.currentTarget.style.transform = "")}
+          onMouseLeave={(e) => (e.currentTarget.style.transform = "")}
         >
-          申請
+          申請する
         </button>
       )}
     </div>
@@ -273,7 +267,7 @@ function GoalCard({
           {goal.memo && <p className="text-xs text-white/70 mt-0.5">{goal.memo}</p>}
         </div>
         <div className="text-right">
-          <p className="font-display text-white text-lg">{formatAmount(goal.targetAmount)}</p>
+          <p className="font-display text-white text-lg">{formatYen(goal.targetAmount)}</p>
           {reached && !goal.isAchieved && (
             <span className="text-xs font-black px-2 py-0.5 rounded-full" style={{ background: "#FFDE00", color: "#1a1e4e" }}>
               目標たっせい！
@@ -284,7 +278,7 @@ function GoalCard({
 
       <div className="bg-white dark:bg-gray-900 px-4 py-3">
         <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-gray-300 mb-1.5">
-          <span>いまの残高: {formatAmount(currentAmount)}</span>
+          <span>いまの残高: {formatYen(currentAmount)}</span>
           <span>{pct}%</span>
         </div>
         <div className="w-full h-3 rounded-full overflow-hidden" style={{ background: "#e5e7eb" }}>
@@ -328,6 +322,7 @@ export default function HomePage() {
   const router = useRouter();
   const [me, setMe] = useState<User | null>(null);
   const [balance, setBalance] = useState<BalanceData | null>(null);
+  const [yenBalance, setYenBalance] = useState(0);
   const [streak, setStreak] = useState(0);
   const [items, setItems] = useState<Item[]>([]);
   const [requests, setRequests] = useState<Request[]>([]);
@@ -371,8 +366,27 @@ export default function HomePage() {
   const [goalMemo, setGoalMemo] = useState("");
   const [goalLoading, setGoalLoading] = useState(false);
 
-  const { concept } = useConcept();
-  const copy = COPY[concept];
+  // ChoreItem/PenaltyItem マスタ（親ビュー参照用）
+  const [masterChoreItems, setMasterChoreItems] = useState<Item[]>([]);
+  const [masterPenaltyItems, setMasterPenaltyItems] = useState<Item[]>([]);
+  const [todayConsumeMin, setTodayConsumeMin] = useState(0);
+
+  // 今日の残高詳細（改善1）
+  const [todayTimePlus, setTodayTimePlus] = useState(0);
+  const [todayTimeMinus, setTodayTimeMinus] = useState(0);
+
+  // ホーム換算フォーム（改善2）
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [convertUnits, setConvertUnits] = useState(1);
+  const [convertSaving, setConvertSaving] = useState(false);
+
+  // クイック登録（改善7）: localStorage から最近使った itemId を管理
+  const [recentItemIds, setRecentItemIds] = useState<string[]>([]);
+
+  // 週次集計後の換金モーダル（改善3）
+  const [postSettleChildren, setPostSettleChildren] = useState<{ id: string; name: string; yenBalance: number }[]>([]);
+  const [postSettleSelected, setPostSettleSelected] = useState<Set<string>>(new Set());
+  const [postSettleSaving, setPostSettleSaving] = useState(false);
 
   const isParent = me?.role === "approver" || me?.role === "admin";
   const canApprove = me?.role === "approver" || me?.role === "admin";
@@ -389,7 +403,8 @@ export default function HomePage() {
       if (meData.role === "child") {
         const now = new Date();
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        const [balRes, itemsRes, reqRes, goalsRes, statsRes, badgesRes, spendingRes] = await Promise.all([
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const [balRes, itemsRes, reqRes, goalsRes, statsRes, badgesRes, spendingRes, consumeRes, todayRes] = await Promise.all([
           fetch(`/api/balance/${meData.id}`),
           fetch("/api/items"),
           fetch("/api/requests?userId=" + meData.id),
@@ -397,10 +412,13 @@ export default function HomePage() {
           fetch("/api/stats/personal-best"),
           fetch("/api/badges"),
           fetch(`/api/spending?from=${monthStart}`),
+          fetch(`/api/time-consumes?from=${todayStart.toISOString()}`),
+          fetch(`/api/balance/${meData.id}/today`),
         ]);
         if (balRes.ok) {
           const balData = await balRes.json();
           setBalance(balData.balance);
+          setYenBalance(balData.yenBalance ?? balData.balance?.virtualAmount ?? 0);
           setStreak(balData.streak ?? 0);
         }
         if (itemsRes.ok) setItems(await itemsRes.json());
@@ -415,22 +433,50 @@ export default function HomePage() {
           const spendingData: { category: string; amount: number }[] = await spendingRes.json();
           setMonthlySpending(spendingData);
         }
+        if (consumeRes.ok) {
+          const consumeData: { minutesUsed: number }[] = await consumeRes.json();
+          setTodayConsumeMin(consumeData.reduce((sum, c) => sum + c.minutesUsed, 0));
+        }
+        if (todayRes.ok) {
+          const td = await todayRes.json();
+          setTodayTimePlus(td.todayTimePlus ?? 0);
+          setTodayTimeMinus(td.todayTimeMinus ?? 0);
+        }
+        // localStorageから最近使った項目IDを読み込む
+        try {
+          const stored = localStorage.getItem(`recentItems_${meData.id}`);
+          if (stored) setRecentItemIds(JSON.parse(stored));
+        } catch { /* ignore */ }
       } else {
-        const [usersRes, pendingRes, itemsRes] = await Promise.all([
+        const [usersRes, pendingRes, itemsRes, choreRes, penaltyRes] = await Promise.all([
           fetch("/api/users"),
           fetch("/api/requests?status=pending"),
           fetch("/api/items"),
+          fetch("/api/chore-items"),
+          fetch("/api/penalty-items"),
         ]);
         if (usersRes.ok) setAllUsers(await usersRes.json());
         if (pendingRes.ok) setPendingRequests(await pendingRes.json());
         if (itemsRes.ok) setItems(await itemsRes.json());
+        if (choreRes.ok) {
+          const choreData: (Item & { category: string })[] = await choreRes.json();
+          setMasterChoreItems(choreData.map((i) => ({
+            ...i,
+            category: i.category === "べんきょう" ? "study" : "chore",
+            isActive: true,
+          })));
+        }
+        if (penaltyRes.ok) {
+          const penaltyData: Item[] = await penaltyRes.json();
+          setMasterPenaltyItems(penaltyData.map((i) => ({ ...i, category: "penalty", isActive: true })));
+        }
       }
     } catch {
       // ネットワークエラーは無視
     }
   }, [router]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { (async () => { await fetchData(); })(); }, [fetchData]);
 
   const handleApprove = async (id: string) => {
     await fetch(`/api/requests/${id}/approve`, { method: "PUT" });
@@ -460,8 +506,57 @@ export default function HomePage() {
     const res = await fetch("/api/settlement/run", { method: "POST" });
     const data = await res.json();
     setSettlementMsg(`集計完了: ${data.processed}人処理しました`);
-    fetchData();
+    await fetchData();
+    // 換金候補を表示（改善3）
+    const usersRes = await fetch("/api/users");
+    if (usersRes.ok) {
+      const users: UserWithBalance[] = await usersRes.json();
+      const candidates = users
+        .filter((u) => u.role === "child" && (u.yenBalance ?? 0) >= 1000)
+        .map((u) => ({ id: u.id, name: u.displayName, yenBalance: u.yenBalance ?? 0 }));
+      if (candidates.length > 0) {
+        setPostSettleChildren(candidates);
+        setPostSettleSelected(new Set(candidates.map((c) => c.id)));
+      }
+    }
     setTimeout(() => setSettlementMsg(""), 4000);
+  };
+
+  const handlePostSettle = async () => {
+    if (postSettleSelected.size === 0) { setPostSettleChildren([]); return; }
+    setPostSettleSaving(true);
+    for (const childId of postSettleSelected) {
+      await fetch("/api/cashouts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: childId }),
+      });
+    }
+    setPostSettleSaving(false);
+    setPostSettleChildren([]);
+    setToast(`${postSettleSelected.size}人分の換金申請を登録しました`);
+    fetchData();
+  };
+
+  const handleConvert = async () => {
+    if (convertUnits < 1) return;
+    setConvertSaving(true);
+    const minutesUsed = convertUnits * MINUTES_PER_UNIT;
+    const res = await fetch("/api/time-converts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ minutesUsed }),
+    });
+    setConvertSaving(false);
+    if (res.ok) {
+      setConvertOpen(false);
+      setConvertUnits(1);
+      setToast(`${formatMin(minutesUsed)} → ${formatYen(convertUnits * YEN_PER_UNIT)} に換算しました`);
+      fetchData();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setToast(err.error ?? "換算に失敗しました");
+    }
   };
 
   const handleAddGoal = async (e: React.FormEvent) => {
@@ -512,9 +607,6 @@ export default function HomePage() {
       setWindfallLabel(""); setWindfallAmount(""); setWindfallNote("");
       setToast(`臨時収入を登録しました`);
       fetchData();
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setToast(data.error ?? "臨時収入: エラーが発生しました");
     }
   };
 
@@ -535,7 +627,7 @@ export default function HomePage() {
       fetchData();
     } else {
       const err = await res.json();
-      setToast(err.error ?? "支出記録: エラーが発生しました");
+      setToast(err.error ?? "エラーが発生しました");
     }
   };
 
@@ -557,9 +649,10 @@ export default function HomePage() {
   if (isParent) {
     const children = allUsers.filter((u) => u.role === "child");
 
-    const choreItems  = items.filter((i) => i.category === "chore");
-    const studyItems  = items.filter((i) => i.category === "study");
-    const penaltyItems = items.filter((i) => i.category === "penalty");
+    // 参照用マスタ（ChoreItem/PenaltyItem、category は正規化済み）
+    const refChoreItems   = masterChoreItems.filter((i) => i.category === "chore");
+    const refStudyItems   = masterChoreItems.filter((i) => i.category === "study");
+    const refPenaltyItems = masterPenaltyItems;
 
     return (
       <div className="lg:pl-64 min-h-screen">
@@ -600,7 +693,7 @@ export default function HomePage() {
                         <p className="text-sm text-gray-700 mt-0.5 font-bold">{req.item.name}</p>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <p className="text-sm font-black" style={{ color: req.minutes >= 0 ? "#3B4CCA" : "#CC0000" }}>
-                            {req.minutes >= 0 ? "+" : ""}{req.minutes}分
+                            {formatSignedMin(req.minutes)}
                             {req.count > 1 && (
                               <span className="text-xs font-bold ml-1 text-gray-400 dark:text-gray-300">（{req.count}回）</span>
                             )}
@@ -685,9 +778,9 @@ export default function HomePage() {
           {/* 出展タスク・トラブル項目（参照用） */}
           <section className="space-y-4">
             <h2 className="font-black text-gray-700 mb-3 mt-8 border-t pt-8">おこづかい項目（参照用）</h2>
-            <CategorySection category="chore" items={choreItems} readOnly />
-            <CategorySection category="study" items={studyItems} readOnly />
-            <CategorySection category="penalty" items={penaltyItems} readOnly defaultOpen={false} />
+            <CategorySection category="chore" items={refChoreItems} readOnly />
+            <CategorySection category="study" items={refStudyItems} readOnly />
+            <CategorySection category="penalty" items={refPenaltyItems} readOnly defaultOpen={false} />
           </section>
         </main>
 
@@ -819,6 +912,54 @@ export default function HomePage() {
             </div>
           </div>
         )}
+
+        {/* 週次集計後→換金判断モーダル（改善3） */}
+        {postSettleChildren.length > 0 && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden" style={{ border: "3px solid #f59e0b" }}>
+              <div className="px-5 py-3 font-display text-white" style={{ background: "#f59e0b" }}>
+                換金する子を選んでください
+              </div>
+              <div className="p-5 space-y-3">
+                {postSettleChildren.map((c) => (
+                  <label key={c.id} className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={postSettleSelected.has(c.id)}
+                      onChange={(e) => {
+                        const next = new Set(postSettleSelected);
+                        if (e.target.checked) next.add(c.id); else next.delete(c.id);
+                        setPostSettleSelected(next);
+                      }}
+                      className="w-5 h-5 accent-amber-500"
+                    />
+                    <span className="font-black text-sm text-gray-800 dark:text-gray-100">{c.name}</span>
+                    <span className="ml-auto font-black text-sm" style={{ color: "var(--expo-blue)" }}>
+                      {formatYen(c.yenBalance)}
+                    </span>
+                  </label>
+                ))}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setPostSettleChildren([])}
+                    className="flex-1 py-3 rounded-xl font-black text-gray-600 text-sm active:scale-95"
+                    style={{ border: "2px solid #d1d5db" }}
+                  >
+                    スキップ
+                  </button>
+                  <button
+                    onClick={handlePostSettle}
+                    disabled={postSettleSaving || postSettleSelected.size === 0}
+                    className="flex-1 py-3 rounded-xl font-black text-white text-sm active:scale-95 disabled:opacity-50"
+                    style={{ background: "#f59e0b", border: "2px solid #b45309" }}
+                  >
+                    {postSettleSaving ? "処理中..." : `${postSettleSelected.size}人を換金申請`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -846,10 +987,6 @@ export default function HomePage() {
       {toast && <Toast message={toast} onDismiss={() => setToast("")} />}
 
       <main className="p-4 pb-24 lg:pb-8 md:max-w-5xl lg:max-w-6xl mx-auto space-y-6">
-        <div className="page-header">
-          <p className="page-eyebrow">{copy.welcome}</p>
-          <h1 className="page-title">{copy.moonRoom}</h1>
-        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* 左カラム：ダッシュボード系 */}
           <div className="space-y-6">
@@ -861,6 +998,17 @@ export default function HomePage() {
             balance={balance}
             streak={streak}
           />
+
+          {/* 今日の残高詳細（改善1） */}
+          {(todayTimePlus > 0 || todayTimeMinus > 0) && (
+            <div className="flex items-center justify-center gap-4 px-4 py-2 rounded-xl text-xs font-black"
+              style={{ background: "var(--expo-light-blue, #e0f0ff)" }}>
+              <span style={{ color: "var(--expo-blue)" }}>今日</span>
+              {todayTimePlus > 0 && <span style={{ color: "var(--expo-blue)" }}>+{formatMin(todayTimePlus)}</span>}
+              {todayTimeMinus > 0 && <span style={{ color: "var(--expo-red)" }}>{formatSignedMin(-todayTimeMinus)}</span>}
+            </div>
+          )}
+
           <button
             onClick={() => { setShowSpendingForm(true); setSpendingAmount(""); setSpendingMemo(""); setSpendingCategory("food"); }}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-black text-sm text-white transition-all active:scale-95"
@@ -868,6 +1016,73 @@ export default function HomePage() {
           >
             <ShoppingBag size={15} />
             ＋使ったお金を記録する
+          </button>
+
+          {/* 時間換算フォーム（改善2） */}
+          {balance && balance.accumulatedMin >= MINUTES_PER_UNIT && (() => {
+            const maxUnits = Math.floor(balance.accumulatedMin / MINUTES_PER_UNIT);
+            const safeUnits = Math.min(convertUnits, maxUnits);
+            return (
+              <div className="rounded-xl overflow-hidden" style={{ border: "2px solid var(--expo-blue)" }}>
+                <button
+                  onClick={() => { setConvertOpen((v) => !v); setConvertUnits(1); }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 font-black text-sm text-white transition-all active:scale-95"
+                  style={{ background: "var(--expo-blue)" }}
+                >
+                  <Timer size={15} />
+                  時間を換算する（{MINUTES_PER_UNIT}分 = {YEN_PER_UNIT.toLocaleString()}円）
+                  <ChevronDown size={14} className={`transition-transform ${convertOpen ? "rotate-180" : ""}`} />
+                </button>
+                {convertOpen && (
+                  <div className="p-3 space-y-3 bg-white dark:bg-gray-900">
+                    <div className="flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setConvertUnits((u) => Math.max(1, u - 1))}
+                        disabled={safeUnits <= 1}
+                        className="w-10 h-10 rounded-xl flex items-center justify-center disabled:opacity-30 transition-all active:scale-95"
+                        style={{ background: "var(--expo-light-blue, #e0f0ff)", color: "var(--expo-blue)" }}
+                      >
+                        <Minus size={16} strokeWidth={3} />
+                      </button>
+                      <div className="text-center flex-1">
+                        <p className="font-display text-lg" style={{ color: "var(--expo-blue)" }}>
+                          {formatMin(safeUnits * MINUTES_PER_UNIT)}
+                        </p>
+                        <p className="text-xs font-black" style={{ color: "var(--expo-blue)" }}>
+                          → {formatYen(safeUnits * YEN_PER_UNIT)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setConvertUnits((u) => Math.min(maxUnits, u + 1))}
+                        disabled={safeUnits >= maxUnits}
+                        className="w-10 h-10 rounded-xl flex items-center justify-center disabled:opacity-30 transition-all active:scale-95"
+                        style={{ background: "var(--expo-light-blue, #e0f0ff)", color: "var(--expo-blue)" }}
+                      >
+                        <Plus size={16} strokeWidth={3} />
+                      </button>
+                    </div>
+                    <button
+                      onClick={handleConvert}
+                      disabled={convertSaving || safeUnits < 1}
+                      className="w-full py-2.5 rounded-xl font-black text-sm text-white disabled:opacity-50 transition-all active:scale-95"
+                      style={{ background: "var(--expo-blue)" }}
+                    >
+                      {convertSaving ? "換算中..." : "換算する"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+          <button
+            onClick={() => router.push("/consume")}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-black text-sm text-white transition-all active:scale-95"
+            style={{ background: "var(--expo-red)", border: "2px solid #7f1d1d", boxShadow: "0 2px 0 #7f1d1d" }}
+          >
+            <Zap size={15} />
+            時間を使う{todayConsumeMin > 0 ? `（今日 ${todayConsumeMin}分消費済み）` : ""}
           </button>
           <ProgressHeatmap requests={requests} />
         </div>
@@ -904,7 +1119,7 @@ export default function HomePage() {
             <div>
               <p className="text-xs font-black" style={{ color: "var(--expo-blue)" }}>今週の実績</p>
               <p className="font-display text-xl mt-0.5" style={{ color: "#1a1e4e" }}>
-                {weekMin >= 0 ? "+" : ""}{weekMin}分
+                {formatSignedMin(weekMin)}
               </p>
             </div>
             <div className="text-right">
@@ -968,7 +1183,7 @@ export default function HomePage() {
                 <GoalCard
                   key={g.id}
                   goal={g}
-                  currentAmount={balance?.virtualAmount ?? 0}
+                  currentAmount={yenBalance}
                   onDelete={handleDeleteGoal}
                   onAchieve={handleAchieveGoal}
                   averageYenPerWeek={averageYenPerWeek}
@@ -992,6 +1207,27 @@ export default function HomePage() {
 
           {/* 右カラム：申請・履歴系 */}
           <div className="space-y-6">
+
+        {/* クイック登録（改善7）: 最近使った項目 */}
+        {recentItemIds.length > 0 && (() => {
+          const allItems = [...choreItems, ...studyItems, ...penaltyItems];
+          const recentItems = recentItemIds
+            .map((id) => allItems.find((i) => i.id === id))
+            .filter((i): i is Item => !!i);
+          if (recentItems.length === 0) return null;
+          return (
+            <div className="rounded-2xl overflow-hidden shadow-sm" style={{ border: "2px solid #f59e0b" }}>
+              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "#f59e0b" }}>
+                <span className="font-display text-white text-sm">さいきんつかった項目</span>
+              </div>
+              <div className="p-3 space-y-2 bg-amber-50 dark:bg-gray-800">
+                {recentItems.map((item) => (
+                  <ItemRow key={item.id} item={item} onRequest={(item) => setModal(item)} />
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* おてつだい */}
         <CategorySection
@@ -1031,7 +1267,7 @@ export default function HomePage() {
                       <p className="font-black text-gray-800 dark:text-gray-100 text-sm leading-snug">{req.item.name}</p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className="text-xs font-black" style={{ color: req.minutes >= 0 ? "var(--expo-blue)" : "var(--expo-red)" }}>
-                          {req.minutes >= 0 ? "+" : ""}{req.minutes}分
+                          {formatSignedMin(req.minutes)}
                           {req.count > 1 && <span className="font-bold ml-1 text-gray-400 dark:text-gray-300">（{req.count}回）</span>}
                         </span>
                         <span className="text-xs text-gray-400 dark:text-gray-300 font-bold">
@@ -1068,6 +1304,15 @@ export default function HomePage() {
           onClose={() => setModal(null)}
           onSuccess={() => {
             setToast("申請しました");
+            if (modal && me) {
+              try {
+                const key = `recentItems_${me.id}`;
+                const prev: string[] = JSON.parse(localStorage.getItem(key) ?? "[]");
+                const next = [modal.id, ...prev.filter((id) => id !== modal.id)].slice(0, 5);
+                localStorage.setItem(key, JSON.stringify(next));
+                setRecentItemIds(next);
+              } catch { /* ignore */ }
+            }
             fetchData();
           }}
         />

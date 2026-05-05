@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { StatusBadge } from "@/components/StatusBadge";
+import { formatSignedMin, formatSignedYen, formatYen } from "@/lib/format";
 
 type User = { id: string; displayName: string; role: string };
 type Child = { id: string; displayName: string };
@@ -25,6 +26,9 @@ export default function HistoryPage() {
   const [events, setEvents] = useState<HistoryEvent[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
   const [filterUser, setFilterUser] = useState("");
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
+  const [filterType, setFilterType] = useState("");
 
   const fetchData = useCallback(async () => {
     const meRes = await fetch("/api/auth/me");
@@ -34,6 +38,9 @@ export default function HistoryPage() {
 
     const params = new URLSearchParams();
     if (filterUser) params.set("userId", filterUser);
+    if (filterFrom) params.set("from", filterFrom);
+    if (filterTo) params.set("to", filterTo);
+    if (filterType) params.set("type", filterType);
 
     const histRes = await fetch(`/api/history?${params}`);
     if (histRes.ok) setEvents(await histRes.json());
@@ -45,7 +52,7 @@ export default function HistoryPage() {
         setChildren(users.filter((u: { role: string }) => u.role === "child"));
       }
     }
-  }, [router, filterUser]);
+  }, [router, filterUser, filterFrom, filterTo, filterType]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -65,7 +72,7 @@ export default function HistoryPage() {
         const d = event.data as { item: { name: string }; minutes: number; status: string };
         return {
           title: d.item?.name ?? "申請",
-          subtitle: `${d.minutes >= 0 ? "+" : ""}${d.minutes}分`,
+          subtitle: formatSignedMin(d.minutes),
           badge: <StatusBadge status={d.status} />,
           color: "border-blue-100",
         };
@@ -83,7 +90,7 @@ export default function HistoryPage() {
         const d = event.data as { amount: number; reason: string };
         return {
           title: "運営費",
-          subtitle: `-${(d.amount as number).toLocaleString()}円`,
+          subtitle: formatYen(-d.amount),
           badge: <span className="text-xs text-purple-700">{d.reason}</span>,
           color: "border-purple-200",
         };
@@ -92,7 +99,7 @@ export default function HistoryPage() {
         const d = event.data as { convertedAmount: number; totalMin: number };
         return {
           title: "週次集計",
-          subtitle: `${d.convertedAmount >= 0 ? "+" : ""}${(d.convertedAmount as number).toLocaleString()}円`,
+          subtitle: formatSignedYen(d.convertedAmount),
           badge: <span className="text-xs text-gray-500">{d.totalMin}分処理</span>,
           color: "border-gray-100",
         };
@@ -101,7 +108,7 @@ export default function HistoryPage() {
         const d = event.data as { amount: number; label: string; note?: string };
         return {
           title: `臨時収入: ${d.label}`,
-          subtitle: `+${(d.amount).toLocaleString()}円`,
+          subtitle: `+${formatYen(d.amount)}`,
           badge: d.note ? <span className="text-xs text-yellow-700">{d.note}</span> : <span className="text-xs text-yellow-600 font-bold">臨時収入</span>,
           color: "border-yellow-200",
         };
@@ -111,7 +118,7 @@ export default function HistoryPage() {
         const catLabel = SPENDING_CATS[d.category] ?? d.category;
         return {
           title: `${catLabel}${d.memo ? `: ${d.memo}` : ""}`,
-          subtitle: `-${(d.amount).toLocaleString()}円`,
+          subtitle: formatYen(-d.amount),
           badge: <span className="text-xs text-orange-600 font-bold">支出</span>,
           color: "border-orange-200",
         };
@@ -135,8 +142,8 @@ export default function HistoryPage() {
           )}
         </div>
 
-        {isParent && children.length > 0 && (
-          <div>
+        <div className="flex flex-wrap gap-2">
+          {isParent && children.length > 0 && (
             <select
               value={filterUser}
               onChange={(e) => setFilterUser(e.target.value)}
@@ -147,8 +154,41 @@ export default function HistoryPage() {
                 <option key={c.id} value={c.id}>{c.displayName}</option>
               ))}
             </select>
-          </div>
-        )}
+          )}
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm min-h-[44px] bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+          >
+            <option value="">すべての種別</option>
+            <option value="request">申請</option>
+            <option value="cash">現金化</option>
+            <option value="deduction">実費控除</option>
+            <option value="settlement">週次集計</option>
+            <option value="windfall">臨時収入</option>
+            <option value="spending">支出</option>
+          </select>
+          <input
+            type="date"
+            value={filterFrom}
+            onChange={(e) => setFilterFrom(e.target.value)}
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm min-h-[44px] bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+          />
+          <input
+            type="date"
+            value={filterTo}
+            onChange={(e) => setFilterTo(e.target.value)}
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm min-h-[44px] bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+          />
+          {(filterUser || filterType || filterFrom || filterTo) && (
+            <button
+              onClick={() => { setFilterUser(""); setFilterType(""); setFilterFrom(""); setFilterTo(""); }}
+              className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 min-h-[44px]"
+            >
+              クリア
+            </button>
+          )}
+        </div>
 
         <div className="space-y-2">
           {events.map((event, i) => {

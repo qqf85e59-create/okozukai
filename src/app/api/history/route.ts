@@ -11,19 +11,25 @@ export async function GET(req: NextRequest) {
   const filterUserId = url.searchParams.get("userId");
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
+  const type = url.searchParams.get("type");
 
   const targetUserId = isChild(role) ? userId : filterUserId;
+
+  const toDate = to ? new Date(to) : undefined;
+  if (toDate) toDate.setHours(23, 59, 59, 999);
 
   const dateFilter =
     from || to
       ? {
           gte: from ? new Date(from) : undefined,
-          lte: to ? new Date(to) : undefined,
+          lte: toDate,
         }
       : undefined;
 
+  const include = (t: string) => !type || type === t;
+
   const [requests, cashRequests, deductions, settlements, windfalls, spending] = await Promise.all([
-    prisma.request.findMany({
+    include("request") ? prisma.request.findMany({
       where: {
         ...(targetUserId ? { userId: targetUserId } : {}),
         ...(dateFilter ? { requestedAt: dateFilter } : {}),
@@ -34,8 +40,8 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { requestedAt: "desc" },
       take: 100,
-    }),
-    prisma.cashRequest.findMany({
+    }) : Promise.resolve([]),
+    include("cash") ? prisma.cashRequest.findMany({
       where: {
         ...(targetUserId ? { userId: targetUserId } : {}),
         ...(dateFilter ? { requestedAt: dateFilter } : {}),
@@ -43,8 +49,8 @@ export async function GET(req: NextRequest) {
       include: { user: { select: { id: true, displayName: true } } },
       orderBy: { requestedAt: "desc" },
       take: 50,
-    }),
-    prisma.expenseDeduction.findMany({
+    }) : Promise.resolve([]),
+    include("deduction") ? prisma.expenseDeduction.findMany({
       where: {
         ...(targetUserId ? { userId: targetUserId } : {}),
         ...(dateFilter ? { createdAt: dateFilter } : {}),
@@ -52,16 +58,16 @@ export async function GET(req: NextRequest) {
       include: { user: { select: { id: true, displayName: true } } },
       orderBy: { createdAt: "desc" },
       take: 50,
-    }),
-    prisma.settlementLog.findMany({
+    }) : Promise.resolve([]),
+    include("settlement") ? prisma.settlementLog.findMany({
       where: {
         ...(targetUserId ? { userId: targetUserId } : {}),
         ...(dateFilter ? { settledAt: dateFilter } : {}),
       },
       orderBy: { settledAt: "desc" },
       take: 50,
-    }),
-    prisma.windfallIncome.findMany({
+    }) : Promise.resolve([]),
+    include("windfall") ? prisma.windfallIncome.findMany({
       where: {
         ...(targetUserId ? { userId: targetUserId } : {}),
         ...(dateFilter ? { recordedAt: dateFilter } : {}),
@@ -69,8 +75,8 @@ export async function GET(req: NextRequest) {
       include: { user: { select: { id: true, displayName: true } } },
       orderBy: { recordedAt: "desc" },
       take: 50,
-    }),
-    prisma.spendingRecord.findMany({
+    }) : Promise.resolve([]),
+    include("spending") ? prisma.spendingRecord.findMany({
       where: {
         ...(targetUserId ? { userId: targetUserId } : {}),
         ...(dateFilter ? { recordedAt: dateFilter } : {}),
@@ -78,7 +84,7 @@ export async function GET(req: NextRequest) {
       include: { user: { select: { id: true, displayName: true } } },
       orderBy: { recordedAt: "desc" },
       take: 50,
-    }),
+    }) : Promise.resolve([]),
   ]);
 
   const events = [
