@@ -23,14 +23,17 @@ export function Toast({ message, onDismiss }: Props) {
       <div
         className="rounded-full shadow-xl px-6 py-3 flex items-center gap-3 whitespace-nowrap"
         style={{
-          background: "white",
-          border: "2px solid var(--expo-blue)",
+          background: "var(--c-bg-elev, white)",
+          border: "2px solid var(--c-accent, var(--expo-blue))",
+          boxShadow: "var(--c-shadow-pop, 0 20px 40px rgba(0,0,0,0.1))",
+          color: "var(--c-fg, var(--expo-dark))",
         }}
       >
         <span
-          className="inline-block w-4 h-4 myaku-eye"
+          className="shrink-0 w-2 h-2 rounded-full"
+          style={{ background: "var(--c-accent, var(--expo-blue))" }}
         />
-        <span className="font-bold text-sm tracking-widest" style={{ color: "var(--expo-blue)" }}>{message}</span>
+        <span className="font-bold text-sm tracking-widest">{message}</span>
       </div>
     </div>
   );

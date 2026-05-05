@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type User = { id: string; displayName: string };
 
@@ -11,6 +11,13 @@ type Props = {
 
 export function ExpenseDeductionForm({ children, onSuccess }: Props) {
   const [userId, setUserId] = useState(children[0]?.id ?? "");
+
+  // children は非同期で読み込まれるため、取得後に userId を同期する
+  useEffect(() => {
+    if (!userId && children.length > 0) {
+      setUserId(children[0].id);
+    }
+  }, [children, userId]);
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,7 +38,7 @@ export function ExpenseDeductionForm({ children, onSuccess }: Props) {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error ?? "エラーが発生しました");
+      setError(data.error ?? "実費控除: エラーが発生しました");
       return;
     }
 

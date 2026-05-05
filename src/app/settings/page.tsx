@@ -154,6 +154,13 @@ export default function SettingsPage() {
                 desc: "レトロゲーム風・コインとクエスト",
                 preview: { bg: "#0c0e1a", accent: "#ffd83d", border: "#3d4577" },
               },
+              {
+                value: "arcade" as Concept,
+                name: "Arcade Pop",
+                nameJp: "POPゲーセン",
+                desc: "ネオン・チケット・ガチャ・ホットオレンジ",
+                preview: { bg: "oklch(0.18 0.06 320)", accent: "oklch(0.78 0.22 30)", border: "oklch(0.7 0.22 340)" },
+              },
             ] as const).map((opt) => {
               const active = concept === opt.value;
               return (
@@ -171,7 +178,7 @@ export default function SettingsPage() {
                     className="shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black"
                     style={{ background: opt.preview.bg, border: `2px solid ${opt.preview.border}`, color: opt.preview.accent }}
                   >
-                    {opt.value === "cosmic" ? "✦" : opt.value === "pixel" ? "▶" : "❧"}
+                    {opt.value === "cosmic" ? "✦" : opt.value === "pixel" ? "▶" : opt.value === "arcade" ? "★" : "❧"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">

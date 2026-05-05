@@ -31,8 +31,11 @@ export async function POST(req: NextRequest) {
   const targetUserId = isChild(role) ? userId : (body.userId ?? userId);
   const { amount, category, memo } = body;
 
-  if (!amount || Number(amount) <= 0 || !VALID_CATS.includes(category)) {
-    return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
+  if (!amount || Number(amount) <= 0) {
+    return NextResponse.json({ error: "支出記録: 金額は1円以上で入力してください" }, { status: 400 });
+  }
+  if (!VALID_CATS.includes(category)) {
+    return NextResponse.json({ error: "支出記録: カテゴリを選択してください" }, { status: 400 });
   }
 
   // 残高確認

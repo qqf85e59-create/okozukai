@@ -12,8 +12,11 @@ export async function PUT(
   const { id: itemId } = await params;
   const { userId, overrideMin } = await req.json();
 
-  if (!userId || overrideMin === undefined) {
-    return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
+  if (!userId) {
+    return NextResponse.json({ error: "個別設定: 対象ユーザーが指定されていません" }, { status: 400 });
+  }
+  if (overrideMin === undefined || overrideMin === null) {
+    return NextResponse.json({ error: "個別設定: 分数を入力してください" }, { status: 400 });
   }
 
   const override = await prisma.itemOverride.upsert({

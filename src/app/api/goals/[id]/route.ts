@@ -22,6 +22,9 @@ export async function PUT(
       ...(body.targetAmount !== undefined && { targetAmount: Number(body.targetAmount) }),
       ...(body.memo !== undefined && { memo: body.memo }),
       ...(body.isAchieved !== undefined && { isAchieved: body.isAchieved }),
+      ...(body.targetDate !== undefined && {
+        targetDate: body.targetDate ? new Date(body.targetDate) : null,
+      }),
     },
   });
 

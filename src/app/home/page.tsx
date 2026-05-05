@@ -10,6 +10,8 @@ import { Toast } from "@/components/Toast";
 import { LabelWithGloss } from "@/components/LabelWithGloss";
 import { ProgressHeatmap } from "@/components/ProgressHeatmap";
 import { ChevronDown, Star, Flame, Trophy, Award, Crown, Coins, Banknote, Target, PlusCircle, ShoppingBag } from "lucide-react";
+import { useConcept } from "@/components/ConceptThemeProvider";
+import { COPY } from "@/lib/copy";
 
 const BADGE_ICONS: Record<string, React.ElementType> = {
   Flame, Trophy, Star, Award, Crown, Coins, Banknote, Target,
@@ -119,17 +121,15 @@ function ItemRow({
 }) {
   const isPenalty = item.category === "penalty";
   const isStudy = item.category === "study";
-  const minColor = isPenalty ? "var(--expo-red)" : "var(--expo-blue)";
-  const btnBg = isPenalty ? "var(--expo-red)" : isStudy ? "var(--expo-green)" : "var(--expo-blue)";
-  const btnBorder = isPenalty ? "#7f1d1d" : isStudy ? "#006633" : "#0d2d6b";
+  const minColor = isPenalty ? "var(--c-danger, var(--expo-red))" : "var(--c-accent, var(--expo-blue))";
+  const btnBg = isPenalty ? "var(--c-danger, var(--expo-red))" : isStudy ? "var(--c-positive, var(--expo-green))" : "var(--c-accent, var(--expo-blue))";
 
   return (
     <div
-      className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-white dark:bg-gray-800"
-      style={{ border: "1px solid #e5e7eb" }}
+      className="mission-row"
     >
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-snug line-clamp-2" title={item.name}>{item.name}</p>
+        <p className="mission-title leading-snug line-clamp-2" title={item.name}>{item.name}</p>
         {!hideMin && (
           <p className="text-xs font-black mt-0.5" style={{ color: minColor }}>
             {formatMin(item.effectiveMin)}
@@ -139,13 +139,10 @@ function ItemRow({
       {!readOnly && onRequest && (
         <button
           onClick={() => onRequest(item)}
-          className="shrink-0 px-3 py-1.5 rounded-lg font-black text-xs text-white min-w-[52px] min-h-[36px] transition-all active:scale-95"
-          style={{ background: btnBg, border: `1.5px solid ${btnBorder}`, boxShadow: `0 2px 0 ${btnBorder}` }}
-          onMouseDown={(e) => (e.currentTarget.style.transform = "translateY(2px)")}
-          onMouseUp={(e) => (e.currentTarget.style.transform = "")}
-          onMouseLeave={(e) => (e.currentTarget.style.transform = "")}
+          className="btn primary shrink-0 text-xs min-w-[52px] min-h-[36px]"
+          style={{ padding: "6px 12px", fontSize: 12 }}
         >
-          申請する
+          申請
         </button>
       )}
     </div>
@@ -374,6 +371,9 @@ export default function HomePage() {
   const [goalMemo, setGoalMemo] = useState("");
   const [goalLoading, setGoalLoading] = useState(false);
 
+  const { concept } = useConcept();
+  const copy = COPY[concept];
+
   const isParent = me?.role === "approver" || me?.role === "admin";
   const canApprove = me?.role === "approver" || me?.role === "admin";
 
@@ -512,6 +512,9 @@ export default function HomePage() {
       setWindfallLabel(""); setWindfallAmount(""); setWindfallNote("");
       setToast(`臨時収入を登録しました`);
       fetchData();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setToast(data.error ?? "臨時収入: エラーが発生しました");
     }
   };
 
@@ -532,7 +535,7 @@ export default function HomePage() {
       fetchData();
     } else {
       const err = await res.json();
-      setToast(err.error ?? "エラーが発生しました");
+      setToast(err.error ?? "支出記録: エラーが発生しました");
     }
   };
 
@@ -843,6 +846,10 @@ export default function HomePage() {
       {toast && <Toast message={toast} onDismiss={() => setToast("")} />}
 
       <main className="p-4 pb-24 lg:pb-8 md:max-w-5xl lg:max-w-6xl mx-auto space-y-6">
+        <div className="page-header">
+          <p className="page-eyebrow">{copy.welcome}</p>
+          <h1 className="page-title">{copy.moonRoom}</h1>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* 左カラム：ダッシュボード系 */}
           <div className="space-y-6">

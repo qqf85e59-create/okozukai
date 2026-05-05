@@ -30,7 +30,7 @@ export default function ChangePasswordPage() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error ?? "エラーが発生しました");
+      setError(data.error ?? "パスワード変更: エラーが発生しました");
       return;
     }
 

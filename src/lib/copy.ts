@@ -21,6 +21,17 @@ type CopyDef = {
 };
 
 export const COPY: Record<Concept, CopyDef> = {
+  arcade: {
+    appName: "TOYBOX ARCADE",
+    appNameJp: "おもちゃ箱バンク",
+    home: "ホーム", missions: "クエスト", history: "プレイ履歴", cash: "両替",
+    report: "ステータス", items: "メダル一覧", expenses: "ペナルティ",
+    audit: "ログ", admin: "プレイヤー", settings: "セッティング",
+    balance: "TICKETS", missionLabel: "MISSION",
+    welcome: "WELCOME PLAYER",
+    tagline: "★ INSERT COIN TO START ★",
+    moonRoom: "プレイルーム",
+  },
   cosmic: {
     appName: "STELLAR BANK",
     appNameJp: "おもちゃ箱バンク",

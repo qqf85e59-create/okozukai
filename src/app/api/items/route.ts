@@ -39,8 +39,14 @@ export async function POST(req: NextRequest) {
   if (!isApprover(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { category, name, description, defaultMin } = await req.json();
-  if (!category || !name || defaultMin === undefined) {
-    return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
+  if (!category) {
+    return NextResponse.json({ error: "タスク登録: カテゴリを選択してください" }, { status: 400 });
+  }
+  if (!name) {
+    return NextResponse.json({ error: "タスク登録: タスク名を入力してください" }, { status: 400 });
+  }
+  if (defaultMin === undefined || defaultMin === null) {
+    return NextResponse.json({ error: "タスク登録: 分数を入力してください" }, { status: 400 });
   }
 
   const item = await prisma.masterItem.create({

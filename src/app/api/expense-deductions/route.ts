@@ -26,8 +26,14 @@ export async function POST(req: NextRequest) {
 
   const { userId, amount, reason } = await req.json();
 
-  if (!userId || !amount || amount <= 0 || !reason?.trim()) {
-    return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
+  if (!userId) {
+    return NextResponse.json({ error: "実費控除: 対象ユーザーが指定されていません" }, { status: 400 });
+  }
+  if (!amount || Number(amount) <= 0) {
+    return NextResponse.json({ error: "実費控除: 金額は1円以上で入力してください" }, { status: 400 });
+  }
+  if (!reason?.trim()) {
+    return NextResponse.json({ error: "実費控除: 控除理由を入力してください" }, { status: 400 });
   }
 
   await prisma.$transaction(async (tx) => {

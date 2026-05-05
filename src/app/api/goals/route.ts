@@ -20,13 +20,19 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isChild(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { title, targetAmount, memo } = await req.json();
+  const { title, targetAmount, memo, targetDate } = await req.json();
   if (!title || !targetAmount) {
     return NextResponse.json({ error: "タイトルと目標金額は必須です" }, { status: 400 });
   }
 
   const goal = await prisma.savingsGoal.create({
-    data: { userId, title, targetAmount: Number(targetAmount), memo },
+    data: {
+      userId,
+      title,
+      targetAmount: Number(targetAmount),
+      memo,
+      targetDate: targetDate ? new Date(targetDate) : null,
+    },
   });
 
   return NextResponse.json(goal, { status: 201 });

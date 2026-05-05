@@ -27,9 +27,9 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Fredoka:wght@400;600;700&family=M+PLUS+Rounded+1c:wght@400;700;800;900&display=swap"
           rel="stylesheet"
         />
-        {/* コンセプトフォント: cosmic=Space Grotesk+JetBrains, pixel=Press Start 2P+DotGothic16, workshop=Fraunces+Inter */}
+        {/* コンセプトフォント: cosmic=Space Grotesk+JetBrains, pixel=Press Start 2P+DotGothic16, workshop=Fraunces+Inter, arcade=Bungee+Plus Jakarta Sans */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Press+Start+2P&family=DotGothic16&family=Fraunces:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Press+Start+2P&family=DotGothic16&family=Fraunces:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@400;500;600;700&family=Bungee&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
         <meta name="apple-mobile-web-app-capable" content="yes" />

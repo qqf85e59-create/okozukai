@@ -41,6 +41,8 @@ yarn-error.log*
 next-env.d.ts
 
 src/generated/prisma
+.claude/
+CLAUDE_CODE_PROMPT*.md
 
 # SQLite database files (contain personal data)
 *.db

@@ -1,16 +1,6 @@
 # おもちゃ箱バンク（Toy Box Bank）
 
-家族お小遣い管理アプリ — **To Infinity and Beyond!**
-
-## 注意事項
-
-> **⚠️ 商標について**
-> 
-> 本アプリは家庭内私的利用のみを目的とした参照実装です。
-> 「Toy Story」「Pixar」「Buzz Lightyear」「Woody」等のキャラクター名・配色は着想元として参照しているのみで、
-> いかなる公式利用・商業利用も意図しません。
-> これらの名称・キャラクター・作品は The Walt Disney Company / Pixar Animation Studios の
-> 登録商標・著作物です。
+家族お小遣い管理アプリ — **Make your wishes count**
 
 ## 技術スタック
 
@@ -70,14 +60,14 @@ fly deploy
 ```
 src/
 ├── app/
-│   ├── page.tsx        ← ログイン（Pixar Ball）
-│   ├── home/           ← アンディの部屋（メイン）
-│   ├── requests/       ← ミッション一覧
-│   ├── history/        ← 思い出アルバム
-│   ├── cash/           ← ピザプラネット両替
-│   ├── report/         ← 作戦会議
-│   ├── items/          ← おもちゃ図鑑（親のみ）
-│   ├── expenses/       ← 修理代（親のみ）
+│   ├── page.tsx        ← ログイン
+│   ├── home/           ← ホーム（メイン）
+│   ├── requests/       ← おてつだい申請
+│   ├── history/        ← おもいで帳
+│   ├── cash/           ← 両替所
+│   ├── report/         ← レポート
+│   ├── items/          ← 項目設定（親のみ）
+│   ├── expenses/       ← 実費控除（親のみ）
 │   ├── audit/          ← 監査ログ（admin のみ）
 │   ├── settings/       ← 設定
 │   └── api/            ← API Routes
@@ -93,5 +83,7 @@ src/
     ├── settlement.ts   ← ⚠️ 変更禁止
     ├── audit.ts
     ├── push.ts
+    ├── copy.ts         ← コンセプト別ラベル
+    ├── useCountUp.ts   ← 残高アニメーション
     └── storage.ts
 ```

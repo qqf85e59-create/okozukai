@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
-export type Concept = "cosmic" | "pixel" | "workshop";
+export type Concept = "cosmic" | "pixel" | "workshop" | "arcade";
 
 const STORAGE_KEY = "okozukai-concept";
 const DEFAULT: Concept = "workshop";

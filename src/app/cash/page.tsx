@@ -60,7 +60,7 @@ export default function CashPage() {
     setLoading(false);
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error ?? "エラーが発生しました");
+      setError(data.error ?? "現金化申請: エラーが発生しました");
       return;
     }
     setAmount("");
@@ -68,18 +68,30 @@ export default function CashPage() {
   };
 
   const handleApprove = async (id: string) => {
-    await fetch(`/api/cash-requests/${id}/approve`, { method: "PUT" });
+    const res = await fetch(`/api/cash-requests/${id}/approve`, { method: "PUT" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "現金化承認: エラーが発生しました");
+      return;
+    }
+    setError("");
     fetchData();
   };
 
   const handleReject = async (id: string) => {
     const reason = prompt("否決理由を入力してください");
     if (!reason) return;
-    await fetch(`/api/cash-requests/${id}/reject`, {
+    const res = await fetch(`/api/cash-requests/${id}/reject`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rejectReason: reason }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "現金化否決: エラーが発生しました");
+      return;
+    }
+    setError("");
     fetchData();
   };
 

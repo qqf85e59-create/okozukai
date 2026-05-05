@@ -17,8 +17,17 @@ export async function POST(req: NextRequest) {
   if (role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { userId, label, type, amountYen, dayOfMonth } = await req.json();
-  if (!userId || !label || !type || !amountYen) {
-    return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
+  if (!userId) {
+    return NextResponse.json({ error: "定期ボーナス: 対象ユーザーを選択してください" }, { status: 400 });
+  }
+  if (!label) {
+    return NextResponse.json({ error: "定期ボーナス: 名称を入力してください" }, { status: 400 });
+  }
+  if (!type) {
+    return NextResponse.json({ error: "定期ボーナス: 種類を選択してください" }, { status: 400 });
+  }
+  if (!amountYen || Number(amountYen) <= 0) {
+    return NextResponse.json({ error: "定期ボーナス: 金額は1円以上で入力してください" }, { status: 400 });
   }
 
   const bonus = await prisma.scheduledBonus.create({

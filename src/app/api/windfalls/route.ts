@@ -27,8 +27,14 @@ export async function POST(req: NextRequest) {
   if (!isApprover(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { userId, amount, label, note } = await req.json();
-  if (!userId || !label?.trim() || !amount || Number(amount) <= 0) {
-    return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
+  if (!userId) {
+    return NextResponse.json({ error: "臨時収入: 対象ユーザーが指定されていません" }, { status: 400 });
+  }
+  if (!label?.trim()) {
+    return NextResponse.json({ error: "臨時収入: 種類（名称）を入力してください" }, { status: 400 });
+  }
+  if (!amount || Number(amount) <= 0) {
+    return NextResponse.json({ error: "臨時収入: 金額は1円以上で入力してください" }, { status: 400 });
   }
 
   await prisma.$transaction(async (tx) => {

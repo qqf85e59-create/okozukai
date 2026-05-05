@@ -33,14 +33,30 @@ export async function runSettlement(): Promise<{
       }
 
       const balance = child.balance;
-      if (!balance) return;
+      if (!balance) {
+        skipped.push(child.displayName);
+        return;
+      }
 
       const totalMin = balance.accumulatedMin + balance.carryoverMin;
 
-      // 60分単位で切り捨て（マイナス側も同様）
-      const convertedHours = totalMin >= 0 ? Math.floor(totalMin / 60) : Math.ceil(totalMin / 60);
-      const convertedAmount = convertedHours * 500;
-      const newCarryover = totalMin - convertedHours * 60;
+      // 換算レートが設定されている場合は分単位で計算、なければ 500円/60分
+      let convertedAmount: number;
+      let newCarryover: number;
+
+      const rate = child.exchangeRate; // yen per minute (optional override)
+      if (rate !== null && rate !== undefined && rate > 0) {
+        // 分単位換算: 端数は切り捨て（マイナスはゼロ方向に丸め）
+        convertedAmount = totalMin >= 0
+          ? Math.floor(totalMin * rate)
+          : Math.ceil(totalMin * rate);
+        newCarryover = 0;
+      } else {
+        // デフォルト: 60分単位で切り捨て（マイナス側も同様）
+        const convertedHours = totalMin >= 0 ? Math.floor(totalMin / 60) : Math.ceil(totalMin / 60);
+        convertedAmount = convertedHours * 500;
+        newCarryover = totalMin - convertedHours * 60;
+      }
 
       // 申請を集計済みに更新
       await tx.request.updateMany({

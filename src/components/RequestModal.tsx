@@ -12,9 +12,9 @@ type Props = {
 };
 
 const CATEGORY_COLOR: Record<string, { header: string; border: string; bg: string }> = {
-  chore:   { header: "var(--expo-blue)", border: "#005699", bg: "var(--expo-light-blue)" },
-  study:   { header: "var(--expo-green)", border: "#008039", bg: "#dcfce7" },
-  penalty: { header: "var(--expo-red)", border: "#b3000e", bg: "#fee2e2" },
+  chore:   { header: "var(--c-accent-2, var(--expo-blue))", border: "var(--c-border-strong, #005699)", bg: "var(--c-bg-elev-2, var(--expo-light-blue))" },
+  study:   { header: "var(--c-positive, var(--expo-green))", border: "var(--c-border-strong, #008039)", bg: "var(--c-bg-elev-2, #dcfce7)" },
+  penalty: { header: "var(--c-danger, var(--expo-red))", border: "var(--c-border-strong, #b3000e)", bg: "var(--c-bg-elev-2, #fee2e2)" },
 };
 
 function formatMin(min: number) {
@@ -78,7 +78,7 @@ export function RequestModal({ itemId, itemName, effectiveMin, category, onClose
         const res = await fetch("/api/requests", { method: "POST", body: formData });
         if (!res.ok) {
           const data = await res.json();
-          setError(data.error ?? "エラーが発生しました");
+          setError(data.error ?? "申請: エラーが発生しました");
           setLoading(false);
           return;
         }
@@ -94,7 +94,7 @@ export function RequestModal({ itemId, itemName, effectiveMin, category, onClose
 
         if (!res.ok) {
           const data = await res.json();
-          setError(data.error ?? "エラーが発生しました");
+          setError(data.error ?? "申請: エラーが発生しました");
           setLoading(false);
           return;
         }
@@ -103,7 +103,7 @@ export function RequestModal({ itemId, itemName, effectiveMin, category, onClose
       onSuccess();
       onClose();
     } catch {
-      setError("送信に失敗しました");
+      setError("申請: 送信に失敗しました（通信エラー）");
     } finally {
       setLoading(false);
     }
@@ -112,21 +112,29 @@ export function RequestModal({ itemId, itemName, effectiveMin, category, onClose
   return (
     <div className="fixed inset-0 bg-[rgba(26,26,26,0.6)] flex items-center justify-center z-50 p-4 backdrop-blur-sm">
       <div
-        className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden"
+        className="rounded-3xl w-full max-w-sm overflow-hidden"
+        style={{
+          background: "var(--c-bg-elev, white)",
+          boxShadow: "var(--c-shadow-pop, 0 20px 40px rgba(0,0,0,0.2))",
+          border: "1px solid var(--c-border, transparent)",
+        }}
       >
         {/* ヘッダー */}
         <div
           className="px-6 py-5 text-white flex items-center gap-3"
           style={{ background: cfg.header }}
         >
-          <div className="w-2.5 h-2.5 myaku-eye shrink-0" style={{ border: "2px solid white", background: "white" }} />
+          <div
+            className="shrink-0 w-3 h-3 rounded-full"
+            style={{ background: "rgba(255,255,255,0.8)", boxShadow: "0 0 0 2px rgba(255,255,255,0.3)" }}
+          />
           <div>
             <p className="font-display text-lg tracking-wider leading-tight">申請する</p>
             <p className="text-xs font-bold opacity-90 mt-0.5">{itemName}</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5" style={{ color: "var(--c-fg, inherit)" }}>
           {isStudyFree && (
             <div>
               <label className="block text-xs font-black mb-2 text-gray-600 dark:text-gray-300 tracking-wider">
@@ -139,8 +147,8 @@ export function RequestModal({ itemId, itemName, effectiveMin, category, onClose
                 value={studyActualMin}
                 onChange={(e) => setStudyActualMin(e.target.value)}
                 required
-                className="w-full rounded-2xl px-4 py-3 text-base font-bold transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100 border-2 border-transparent focus:bg-white dark:focus:bg-gray-700"
-                style={{ outline: "none" }}
+                className="w-full rounded-2xl px-4 py-3 text-base font-bold transition-all border-2 border-transparent"
+                style={{ background: "var(--c-bg-elev-2, #f9fafb)", color: "var(--c-fg, inherit)", outline: "none" }}
                 onFocus={(e) => (e.target.style.borderColor = cfg.header)}
                 onBlur={(e) => (e.target.style.borderColor = "transparent")}
                 placeholder="例: 30"
@@ -200,8 +208,8 @@ export function RequestModal({ itemId, itemName, effectiveMin, category, onClose
               onChange={(e) => setNote(e.target.value)}
               rows={3}
               required={isPenalty}
-              className="w-full rounded-2xl px-4 py-3 text-sm font-bold resize-none transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100 border-2 border-transparent focus:bg-white dark:focus:bg-gray-700"
-              style={{ outline: "none" }}
+              className="w-full rounded-2xl px-4 py-3 text-sm font-bold resize-none transition-all border-2 border-transparent"
+              style={{ background: "var(--c-bg-elev-2, #f9fafb)", color: "var(--c-fg, inherit)", outline: "none" }}
               onFocus={(e) => (e.target.style.borderColor = isPenalty ? "var(--expo-red)" : cfg.header)}
               onBlur={(e) => (e.target.style.borderColor = "transparent")}
               placeholder={
@@ -244,7 +252,7 @@ export function RequestModal({ itemId, itemName, effectiveMin, category, onClose
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full py-3 rounded-2xl text-sm font-bold transition-all active:scale-95 border-2 border-dashed"
-                style={{ borderColor: "rgba(0,104,183,0.3)", color: "var(--expo-blue)", background: "var(--expo-light-blue)" }}
+                style={{ borderColor: "var(--c-border-strong, rgba(0,104,183,0.3))", color: "var(--c-accent, var(--expo-blue))", background: "var(--c-bg-elev-2, var(--expo-light-blue))" }}
               >
                 + 写真を追加する
               </button>
@@ -271,7 +279,8 @@ export function RequestModal({ itemId, itemName, effectiveMin, category, onClose
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3.5 rounded-full font-black text-gray-500 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 transition-all active:scale-95"
+              className="flex-1 py-3.5 rounded-full font-black transition-all active:scale-95"
+              style={{ background: "var(--c-bg-elev-2, #f3f4f6)", color: "var(--c-fg-mute, #6b7280)" }}
             >
               キャンセル
             </button>
