@@ -9,6 +9,33 @@ datasource db {
 
 // ── Enums ──
 
+enum YenLedgerReason {
+  CONVERT_IN
+  CASH_OUT
+  CASH_FEE
+  BONUS
+  EXPENSE_DEDUCT
+  ADJUSTMENT
+}
+
+enum LedgerReason {
+  STUDY
+  CHORE
+  PENALTY
+  CONVERT_OUT
+  CONSUME
+  ADJUSTMENT
+}
+
+enum LedgerSourceType {
+  STUDY_LOG
+  CHORE_CLAIM
+  PENALTY_EVENT
+  TIME_CONVERT
+  TIME_CONSUME
+  ADJUSTMENT
+}
+
 enum EventCategory {
   BIRTHDAY
   TRIP
@@ -30,6 +57,17 @@ enum UserRole {
   CHILD
 }
 
+enum ItemMode {
+  FIXED
+  PROPORTIONAL
+}
+
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // ── Core Models ──
 
 model Family {
@@ -40,6 +78,8 @@ model Family {
   virtualMembers VirtualMember[]
   events         Event[]
   templates      EventTemplate[]
+  choreItems     ChoreItem[]
+  penaltyItems   PenaltyItem[]
 }
 
 model User {
@@ -73,6 +113,16 @@ model User {
   eventComments      EventComment[]
   eventReactions     EventReaction[]
   eventParticipants  EventParticipant[]
+  yenLedgers         YenLedger[]
+  timeLedgers        TimeLedger[]
+  choreOverrides     UserChoreOverride[]
+  penaltyOverrides   UserPenaltyOverride[]
+  studyLogs          StudyLog[]
+  choreClaims        ChoreClaim[]
+  penaltyEvents      PenaltyEvent[]
+  timeConverts       TimeConvert[]
+  cashOuts           CashOut[]
+  timeConsumes       TimeConsume[]
 }
 
 model Balance {
@@ -430,4 +480,210 @@ model EventRetrospective {
   actualAmount  Int?
   note          String?
   createdAt     DateTime @default(now())
+}
+
+// ── P1: Ledger Models ──
+
+// 円残高イベントログ
+model YenLedger {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deltaYen  Int
+  reason    YenLedgerReason
+  sourceId  String?
+  note      String?
+  createdAt DateTime        @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// 時間残高イベントログ
+model TimeLedger {
+  id           String           @id @default(cuid())
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deltaMinutes Int
+  reason       LedgerReason
+  sourceType   LedgerSourceType
+  sourceId     String?
+  note         String?
+  createdAt    DateTime         @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// ── P2: ChoreItem / PenaltyItem マスタ ──
+
+model ChoreItem {
+  id           String              @id @default(cuid())
+  familyId     String
+  family       Family              @relation(fields: [familyId], references: [id])
+  category     String              // "おてつだい" | "べんきょう"
+  name         String
+  bonusMinutes Int
+  mode         ItemMode            @default(FIXED)
+  active       Boolean             @default(true)
+  sortOrder    Int                 @default(0)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  overrides    UserChoreOverride[]
+  claims       ChoreClaim[]
+
+  @@index([familyId, sortOrder])
+}
+
+model UserChoreOverride {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  choreItemId  String
+  choreItem    ChoreItem @relation(fields: [choreItemId], references: [id], onDelete: Cascade)
+  bonusMinutes Int?
+  active       Boolean   @default(true)
+
+  @@unique([userId, choreItemId])
+  @@index([userId])
+}
+
+model PenaltyItem {
+  id             String                @id @default(cuid())
+  familyId       String
+  family         Family                @relation(fields: [familyId], references: [id])
+  name           String
+  penaltyMinutes Int
+  mode           ItemMode              @default(FIXED)
+  unitLabel      String?
+  active         Boolean               @default(true)
+  sortOrder      Int                   @default(0)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  overrides      UserPenaltyOverride[]
+  events         PenaltyEvent[]
+
+  @@index([familyId, sortOrder])
+}
+
+model UserPenaltyOverride {
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  penaltyItemId  String
+  penaltyItem    PenaltyItem @relation(fields: [penaltyItemId], references: [id], onDelete: Cascade)
+  penaltyMinutes Int?
+  active         Boolean     @default(true)
+
+  @@unique([userId, penaltyItemId])
+  @@index([userId])
+}
+
+// ── P3: 申請承認フロー ──
+
+model StudyLog {
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  minutes        Int
+  studiedAt      DateTime
+  note           String?
+  status         ClaimStatus @default(PENDING)
+  approvedById   String?
+  approvedAt     DateTime?
+  rejectedReason String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([userId, studiedAt])
+  @@index([userId, status])
+}
+
+model ChoreClaim {
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  choreItemId    String
+  choreItem      ChoreItem   @relation(fields: [choreItemId], references: [id])
+  count          Int         @default(1)
+  actualValue    Int?
+  totalMinutes   Int
+  performedAt    DateTime
+  note           String?
+  status         ClaimStatus @default(PENDING)
+  approvedById   String?
+  approvedAt     DateTime?
+  rejectedReason String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([userId, status])
+}
+
+model PenaltyEvent {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  penaltyItemId String
+  penaltyItem   PenaltyItem @relation(fields: [penaltyItemId], references: [id])
+  count         Int         @default(1)
+  actualValue   Int?
+  totalMinutes  Int
+  occurredAt    DateTime
+  reason        String
+  createdById   String
+  createdAt     DateTime    @default(now())
+
+  @@index([userId, occurredAt])
+}
+
+// ── P4: 時間→金額換算 ──
+
+model TimeConvert {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  minutesUsed  Int
+  yenGained    Int
+  rateSnapshot Int      @default(500)
+  convertedAt  DateTime @default(now())
+
+  @@index([userId, convertedAt])
+}
+
+// ── P6: 時間消費カテゴリ ──
+
+enum ConsumeCategory {
+  GAME
+  SMARTPHONE
+  TV
+  OTHER
+}
+
+// ── P5: 換金 ──
+
+model CashOut {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grossYen     Int
+  feeYen       Int      @default(500)
+  netYen       Int
+  approvedById String
+  note         String?
+  cashedOutAt  DateTime @default(now())
+
+  @@index([userId, cashedOutAt])
+}
+
+// ── P6: 時間消費 ──
+
+model TimeConsume {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    ConsumeCategory
+  minutesUsed Int
+  memo        String?
+  consumedAt  DateTime        @default(now())
+
+  @@index([userId, consumedAt])
 }

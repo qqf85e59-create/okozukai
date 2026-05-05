@@ -14,6 +14,7 @@ type Props = {
   displayName: string;
   gradeLabel?: string | null;
   balance: BalanceData | null;
+  yenBalance?: number;
   streak?: number;
   compact?: boolean;
 };
@@ -58,8 +59,9 @@ function PulseGauge({ value, max, isDebt }: { value: number; max: number; isDebt
   );
 }
 
-export function BalanceSummary({ displayName, gradeLabel, balance, streak, compact }: Props) {
-  const isDebt = (balance?.virtualAmount ?? 0) < 0;
+export function BalanceSummary({ displayName, gradeLabel, balance, yenBalance, streak, compact }: Props) {
+  const displayAmount = yenBalance ?? balance?.virtualAmount ?? 0;
+  const isDebt = displayAmount < 0;
   
   // 背景色: 通常は万博ブルーと白のグラデーション、赤字時は赤ベース
   const headerBg = isDebt
@@ -82,10 +84,15 @@ export function BalanceSummary({ displayName, gradeLabel, balance, streak, compa
             {gradeLabel && (
               <p className="text-[10px] font-bold" style={{ color: "rgba(255,255,255,0.8)" }}>{gradeLabel}</p>
             )}
+            {(balance?.accumulatedMin ?? 0) !== 0 && (
+              <p className="text-[10px] font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>
+                活動中 {formatMinutes(balance?.accumulatedMin ?? 0)}
+              </p>
+            )}
           </div>
           <div className="text-right flex flex-col items-end gap-1">
             <p className="font-display text-2xl text-white">
-              {formatAmount(balance?.virtualAmount ?? 0)}
+              {formatAmount(displayAmount)}
             </p>
             {isDebt && (
               <span
@@ -154,7 +161,7 @@ export function BalanceSummary({ displayName, gradeLabel, balance, streak, compa
             <LabelWithGloss main="いのちの輝き残高" gloss="おこづかい" />
           </p>
           <p className="font-display text-5xl text-white mt-1">
-            {formatAmount(balance?.virtualAmount ?? 0)}
+            {formatAmount(displayAmount)}
           </p>
         </div>
       </div>

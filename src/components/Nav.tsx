@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, ClipboardList, BookOpen, Coins, BarChart3, Database, Receipt, LogOut, Settings, Users } from "lucide-react";
+import { Home, ClipboardList, BookOpen, Coins, BarChart3, Database, Receipt, LogOut, Settings, Users, Bell, AlertTriangle, ListChecks, Timer, Zap } from "lucide-react";
 
 // 万博風のミニロゴ（ミャクミャクモチーフ）
 function ExpoLogoMini() {
@@ -28,19 +28,26 @@ const NAV_ITEMS = [
   { href: "/history",  main: "きろく",           gloss: "申請の記録",       Icon: BookOpen      },
   { href: "/cash",     main: "現金にする",       gloss: "現金化",           Icon: Coins         },
   { href: "/report",   main: "レポート",         gloss: "成績",             Icon: BarChart3     },
+  { href: "/convert",  main: "時間を換算",       gloss: "60分→500円",       Icon: Timer         },
+  { href: "/cashout",  main: "換金する",         gloss: "現金に換える",     Icon: Coins         },
+  { href: "/consume",  main: "時間を使う",       gloss: "消費を記録",       Icon: Zap           },
 ];
 
 const PARENT_ITEMS = [
-  { href: "/home",     main: "ホーム",           gloss: "トップページ",     Icon: Home          },
-  { href: "/items",    main: "項目設定",         gloss: "おこづかい項目",   Icon: Database      },
-  { href: "/expenses", main: "実費控除",         gloss: "費用を引く",       Icon: Receipt       },
-  { href: "/history",  main: "きろく",           gloss: "申請の記録",       Icon: BookOpen      },
-  { href: "/report",   main: "レポート",         gloss: "成績",             Icon: BarChart3     },
-  { href: "/audit",    main: "監査ログ",         gloss: "操作記録",         Icon: Settings      },
+  { href: "/home",          main: "ホーム",       gloss: "トップページ",   Icon: Home          },
+  { href: "/approvals",     main: "承認待ち",     gloss: "申請を承認",     Icon: Bell          },
+  { href: "/penalties/new", main: "ペナルティ",   gloss: "記録する",       Icon: AlertTriangle },
+  { href: "/items",         main: "項目設定",     gloss: "おこづかい項目", Icon: Database      },
+  { href: "/expenses",      main: "実費控除",     gloss: "費用を引く",     Icon: Receipt       },
+  { href: "/history",       main: "きろく",       gloss: "申請の記録",     Icon: BookOpen      },
+  { href: "/report",        main: "レポート",     gloss: "成績",           Icon: BarChart3     },
+  { href: "/audit",         main: "監査ログ",     gloss: "操作記録",       Icon: Settings      },
 ];
 
 const ADMIN_ONLY_ITEMS = [
-  { href: "/admin/users", main: "ユーザー管理",  gloss: "管理者設定",       Icon: Users         },
+  { href: "/admin/users",          main: "ユーザー管理",  gloss: "管理者設定",   Icon: Users      },
+  { href: "/admin/chore-items",    main: "おてつだい項目", gloss: "項目マスタ",  Icon: ListChecks },
+  { href: "/admin/penalty-items",  main: "ペナルティ項目", gloss: "項目マスタ",  Icon: AlertTriangle },
 ];
 
 type Props = {

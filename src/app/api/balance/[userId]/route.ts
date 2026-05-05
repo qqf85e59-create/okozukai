@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { calculateGrade } from "@/lib/grade";
 import { isApprover } from "@/lib/auth";
-
 import { calculateStreak } from "@/lib/streak";
 
 export async function GET(
@@ -39,12 +38,14 @@ export async function GET(
   });
 
   const streak = calculateStreak(studyDates.map((r) => r.requestedAt));
+  const yenBalance = user.balance?.virtualAmount ?? 0;
 
   return NextResponse.json({
     userId: user.id,
     displayName: user.displayName,
     grade,
     balance: user.balance,
+    yenBalance,
     streak,
   });
 }

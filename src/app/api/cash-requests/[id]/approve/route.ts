@@ -18,19 +18,17 @@ export async function PUT(
     return NextResponse.json({ error: "承認待ち以外の申請は操作できません" }, { status: 400 });
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.cashRequest.update({
-      where: { id },
-      data: { status: "approved", reviewedAt: new Date(), reviewerId },
-    });
-    // 手数料 + 申請額を残高から引く
-    await tx.balance.update({
-      where: { userId: cashReq.userId },
-      data: {
-        virtualAmount: { decrement: cashReq.amount + cashReq.fee },
-        totalCashed: { increment: cashReq.amount },
-      },
-    });
+  await prisma.cashRequest.update({
+    where: { id },
+    data: { status: "approved", reviewedAt: new Date(), reviewerId },
+  });
+
+  await prisma.balance.update({
+    where: { userId: cashReq.userId },
+    data: {
+      virtualAmount: { decrement: cashReq.amount + cashReq.fee },
+      totalCashed: { increment: cashReq.amount },
+    },
   });
 
   return NextResponse.json({ ok: true });

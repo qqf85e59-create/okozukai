@@ -29,20 +29,15 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.request.update({
-        where: { id },
-        data: { status: "rejected", reviewedAt: new Date(), reviewerId, rejectReason: rejectReason.trim() },
-      });
-      // Create undo token (10 min)
-      await tx.requestUndoToken.upsert({
-        where: { requestId: id },
-        update: { expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
-        create: {
-          requestId: id,
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-        },
-      });
+    await prisma.request.update({
+      where: { id },
+      data: { status: "rejected", reviewedAt: new Date(), reviewerId, rejectReason: rejectReason.trim() },
+    });
+
+    await prisma.requestUndoToken.upsert({
+      where: { requestId: id },
+      update: { expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
+      create: { requestId: id, expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
     });
 
     await audit(reviewerId, "request.reject", "Request", id, { rejectReason: rejectReason.trim() });

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { isApprover, isChild } from "@/lib/auth";
+import { audit } from "@/lib/audit";
+import { addYenLedger } from "@/lib/ledger";
 
 export async function GET(req: NextRequest) {
   const userId = req.headers.get("x-user-id");
@@ -31,22 +33,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.windfallIncome.create({
-      data: {
-        userId,
-        amount: Number(amount),
-        label: label.trim(),
-        note: note?.trim() || null,
-        recordedBy: actorId,
-      },
-    });
-    await tx.balance.upsert({
-      where: { userId },
-      update: { virtualAmount: { increment: Number(amount) } },
-      create: { userId, virtualAmount: Number(amount) },
-    });
+  // Note: prisma.$transaction(async callback) does not commit with the
+  // better-sqlite3 adapter (v7.8.x), so we use sequential awaits instead.
+  const record = await prisma.windfallIncome.create({
+    data: {
+      userId,
+      amount: Number(amount),
+      label: label.trim(),
+      note: note?.trim() || null,
+      recordedBy: actorId,
+    },
   });
+  await prisma.balance.upsert({
+    where: { userId },
+    update: { virtualAmount: { increment: Number(amount) } },
+    create: { userId, virtualAmount: Number(amount) },
+  });
+  await addYenLedger(userId, Number(amount), "BONUS", { sourceId: record.id, note: label.trim() });
+  await audit(actorId, "windfall.create", "WindfallIncome", record.id, { userId, amount: Number(amount), label });
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }

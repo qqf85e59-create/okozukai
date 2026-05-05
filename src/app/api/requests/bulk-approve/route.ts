@@ -26,24 +26,20 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.request.update({
-        where: { id },
-        data: { status: "approved", reviewedAt: new Date(), reviewerId },
-      });
-      await tx.balance.update({
-        where: { userId: request.userId },
-        data: { accumulatedMin: { increment: request.minutes } },
-      });
-      // Create undo token (10 min)
-      await tx.requestUndoToken.upsert({
-        where: { requestId: id },
-        update: { expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
-        create: {
-          requestId: id,
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-        },
-      });
+    await prisma.request.update({
+      where: { id },
+      data: { status: "approved", reviewedAt: new Date(), reviewerId },
+    });
+
+    await prisma.balance.update({
+      where: { userId: request.userId },
+      data: { accumulatedMin: { increment: request.minutes } },
+    });
+
+    await prisma.requestUndoToken.upsert({
+      where: { requestId: id },
+      update: { expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
+      create: { requestId: id, expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
     });
 
     await audit(reviewerId, "request.approve", "Request", id);

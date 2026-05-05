@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { isApprover } from "@/lib/auth";
+import { audit } from "@/lib/audit";
+import { addYenLedger } from "@/lib/ledger";
 
 export async function GET(req: NextRequest) {
   const userId = req.headers.get("x-user-id");
@@ -30,19 +32,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.expenseDeduction.create({
-      data: { userId, amount: Number(amount), reason, registeredBy },
-    });
-
-    await tx.balance.update({
-      where: { userId },
-      data: {
-        virtualAmount: { decrement: Number(amount) },
-        totalDeducted: { increment: Number(amount) },
-      },
-    });
+  // Note: prisma.$transaction(async callback) does not commit with the
+  // better-sqlite3 adapter (v7.8.x), so we use sequential awaits instead.
+  const record = await prisma.expenseDeduction.create({
+    data: { userId, amount: Number(amount), reason, registeredBy },
   });
+  await prisma.balance.update({
+    where: { userId },
+    data: {
+      virtualAmount: { decrement: Number(amount) },
+      totalDeducted: { increment: Number(amount) },
+    },
+  });
+  await addYenLedger(userId, -Number(amount), "EXPENSE_DEDUCT", { sourceId: record.id, note: reason });
+  await audit(registeredBy, "expense-deduction.create", "ExpenseDeduction", record.id, { userId, amount: Number(amount), reason });
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }

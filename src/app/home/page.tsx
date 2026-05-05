@@ -9,7 +9,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Toast } from "@/components/Toast";
 import { LabelWithGloss } from "@/components/LabelWithGloss";
 import { ProgressHeatmap } from "@/components/ProgressHeatmap";
-import { ChevronDown, Star, Flame, Trophy, Award, Crown, Coins, Banknote, Target, PlusCircle, ShoppingBag } from "lucide-react";
+import { ChevronDown, Star, Flame, Trophy, Award, Crown, Coins, Banknote, Target, PlusCircle, ShoppingBag, Timer, Zap } from "lucide-react";
 
 const BADGE_ICONS: Record<string, React.ElementType> = {
   Flame, Trophy, Star, Award, Crown, Coins, Banknote, Target,
@@ -78,21 +78,10 @@ type UserWithBalance = {
   role: string;
   grade: { gradeLabel: string } | null;
   balance: BalanceData | null;
+  yenBalance: number;
 };
 
-/* ────────────────────────────────── helpers ── */
-function formatMin(min: number) {
-  const abs = Math.abs(min);
-  const h = Math.floor(abs / 60);
-  const m = abs % 60;
-  const sign = min < 0 ? "-" : "+";
-  if (h === 0) return `${sign}${m}分`;
-  return `${sign}${h}時間${m > 0 ? m + "分" : ""}`;
-}
-
-function formatAmount(n: number) {
-  return n.toLocaleString("ja-JP") + "円";
-}
+import { formatMin, formatYen } from "@/lib/format";
 
 /* 今週月曜0時 */
 function weekStart() {
@@ -276,7 +265,7 @@ function GoalCard({
           {goal.memo && <p className="text-xs text-white/70 mt-0.5">{goal.memo}</p>}
         </div>
         <div className="text-right">
-          <p className="font-display text-white text-lg">{formatAmount(goal.targetAmount)}</p>
+          <p className="font-display text-white text-lg">{formatYen(goal.targetAmount)}</p>
           {reached && !goal.isAchieved && (
             <span className="text-xs font-black px-2 py-0.5 rounded-full" style={{ background: "#FFDE00", color: "#1a1e4e" }}>
               目標たっせい！
@@ -287,7 +276,7 @@ function GoalCard({
 
       <div className="bg-white dark:bg-gray-900 px-4 py-3">
         <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-gray-300 mb-1.5">
-          <span>いまの残高: {formatAmount(currentAmount)}</span>
+          <span>いまの残高: {formatYen(currentAmount)}</span>
           <span>{pct}%</span>
         </div>
         <div className="w-full h-3 rounded-full overflow-hidden" style={{ background: "#e5e7eb" }}>
@@ -331,6 +320,7 @@ export default function HomePage() {
   const router = useRouter();
   const [me, setMe] = useState<User | null>(null);
   const [balance, setBalance] = useState<BalanceData | null>(null);
+  const [yenBalance, setYenBalance] = useState(0);
   const [streak, setStreak] = useState(0);
   const [items, setItems] = useState<Item[]>([]);
   const [requests, setRequests] = useState<Request[]>([]);
@@ -374,6 +364,11 @@ export default function HomePage() {
   const [goalMemo, setGoalMemo] = useState("");
   const [goalLoading, setGoalLoading] = useState(false);
 
+  // ChoreItem/PenaltyItem マスタ（親ビュー参照用）
+  const [masterChoreItems, setMasterChoreItems] = useState<Item[]>([]);
+  const [masterPenaltyItems, setMasterPenaltyItems] = useState<Item[]>([]);
+  const [todayConsumeMin, setTodayConsumeMin] = useState(0);
+
   const isParent = me?.role === "approver" || me?.role === "admin";
   const canApprove = me?.role === "approver" || me?.role === "admin";
 
@@ -389,7 +384,8 @@ export default function HomePage() {
       if (meData.role === "child") {
         const now = new Date();
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        const [balRes, itemsRes, reqRes, goalsRes, statsRes, badgesRes, spendingRes] = await Promise.all([
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const [balRes, itemsRes, reqRes, goalsRes, statsRes, badgesRes, spendingRes, consumeRes] = await Promise.all([
           fetch(`/api/balance/${meData.id}`),
           fetch("/api/items"),
           fetch("/api/requests?userId=" + meData.id),
@@ -397,10 +393,12 @@ export default function HomePage() {
           fetch("/api/stats/personal-best"),
           fetch("/api/badges"),
           fetch(`/api/spending?from=${monthStart}`),
+          fetch(`/api/time-consumes?from=${todayStart.toISOString()}`),
         ]);
         if (balRes.ok) {
           const balData = await balRes.json();
           setBalance(balData.balance);
+          setYenBalance(balData.yenBalance ?? balData.balance?.virtualAmount ?? 0);
           setStreak(balData.streak ?? 0);
         }
         if (itemsRes.ok) setItems(await itemsRes.json());
@@ -415,22 +413,40 @@ export default function HomePage() {
           const spendingData: { category: string; amount: number }[] = await spendingRes.json();
           setMonthlySpending(spendingData);
         }
+        if (consumeRes.ok) {
+          const consumeData: { minutesUsed: number }[] = await consumeRes.json();
+          setTodayConsumeMin(consumeData.reduce((sum, c) => sum + c.minutesUsed, 0));
+        }
       } else {
-        const [usersRes, pendingRes, itemsRes] = await Promise.all([
+        const [usersRes, pendingRes, itemsRes, choreRes, penaltyRes] = await Promise.all([
           fetch("/api/users"),
           fetch("/api/requests?status=pending"),
           fetch("/api/items"),
+          fetch("/api/chore-items"),
+          fetch("/api/penalty-items"),
         ]);
         if (usersRes.ok) setAllUsers(await usersRes.json());
         if (pendingRes.ok) setPendingRequests(await pendingRes.json());
         if (itemsRes.ok) setItems(await itemsRes.json());
+        if (choreRes.ok) {
+          const choreData: (Item & { category: string })[] = await choreRes.json();
+          setMasterChoreItems(choreData.map((i) => ({
+            ...i,
+            category: i.category === "べんきょう" ? "study" : "chore",
+            isActive: true,
+          })));
+        }
+        if (penaltyRes.ok) {
+          const penaltyData: Item[] = await penaltyRes.json();
+          setMasterPenaltyItems(penaltyData.map((i) => ({ ...i, category: "penalty", isActive: true })));
+        }
       }
     } catch {
       // ネットワークエラーは無視
     }
   }, [router]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { (async () => { await fetchData(); })(); }, [fetchData]);
 
   const handleApprove = async (id: string) => {
     await fetch(`/api/requests/${id}/approve`, { method: "PUT" });
@@ -554,9 +570,10 @@ export default function HomePage() {
   if (isParent) {
     const children = allUsers.filter((u) => u.role === "child");
 
-    const choreItems  = items.filter((i) => i.category === "chore");
-    const studyItems  = items.filter((i) => i.category === "study");
-    const penaltyItems = items.filter((i) => i.category === "penalty");
+    // 参照用マスタ（ChoreItem/PenaltyItem、category は正規化済み）
+    const refChoreItems   = masterChoreItems.filter((i) => i.category === "chore");
+    const refStudyItems   = masterChoreItems.filter((i) => i.category === "study");
+    const refPenaltyItems = masterPenaltyItems;
 
     return (
       <div className="lg:pl-64 min-h-screen">
@@ -645,6 +662,7 @@ export default function HomePage() {
                     displayName={u.displayName}
                     gradeLabel={u.grade?.gradeLabel}
                     balance={u.balance}
+                    yenBalance={u.yenBalance}
                     compact
                   />
                   <button
@@ -682,9 +700,9 @@ export default function HomePage() {
           {/* 出展タスク・トラブル項目（参照用） */}
           <section className="space-y-4">
             <h2 className="font-black text-gray-700 mb-3 mt-8 border-t pt-8">おこづかい項目（参照用）</h2>
-            <CategorySection category="chore" items={choreItems} readOnly />
-            <CategorySection category="study" items={studyItems} readOnly />
-            <CategorySection category="penalty" items={penaltyItems} readOnly defaultOpen={false} />
+            <CategorySection category="chore" items={refChoreItems} readOnly />
+            <CategorySection category="study" items={refStudyItems} readOnly />
+            <CategorySection category="penalty" items={refPenaltyItems} readOnly defaultOpen={false} />
           </section>
         </main>
 
@@ -852,6 +870,7 @@ export default function HomePage() {
             displayName={me.displayName}
             gradeLabel={me.grade?.gradeLabel}
             balance={balance}
+            yenBalance={yenBalance}
             streak={streak}
           />
           <button
@@ -861,6 +880,24 @@ export default function HomePage() {
           >
             <ShoppingBag size={15} />
             ＋使ったお金を記録する
+          </button>
+          {balance && balance.accumulatedMin >= 60 && (
+            <button
+              onClick={() => router.push("/convert")}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-black text-sm text-white transition-all active:scale-95"
+              style={{ background: "var(--expo-blue)", border: "2px solid #0d2d6b", boxShadow: "0 2px 0 #0d2d6b" }}
+            >
+              <Timer size={15} />
+              時間を換算する（60分 = 500円）
+            </button>
+          )}
+          <button
+            onClick={() => router.push("/consume")}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-black text-sm text-white transition-all active:scale-95"
+            style={{ background: "var(--expo-red)", border: "2px solid #7f1d1d", boxShadow: "0 2px 0 #7f1d1d" }}
+          >
+            <Zap size={15} />
+            時間を使う{todayConsumeMin > 0 ? `（今日 ${todayConsumeMin}分消費済み）` : ""}
           </button>
           <ProgressHeatmap requests={requests} />
         </div>
@@ -961,7 +998,7 @@ export default function HomePage() {
                 <GoalCard
                   key={g.id}
                   goal={g}
-                  currentAmount={balance?.virtualAmount ?? 0}
+                  currentAmount={yenBalance}
                   onDelete={handleDeleteGoal}
                   onAchieve={handleAchieveGoal}
                   averageYenPerWeek={averageYenPerWeek}
