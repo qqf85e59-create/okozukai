@@ -276,21 +276,45 @@
   --expo-yellow: #FFD700;   /* アクセント */
   --expo-green: #009944;
 
+  /* === V14 ファミリー・ウォーム — デフォルトテーマ === */
+  --color-bg: #F4F1DE;
+  --color-surface: #FFFFFF;
+  --color-text: #3D405B;
+  --color-text-dim: #7A7C9A;
+  --color-primary: #E07A5F;
+  --color-secondary: #81B29A;
+  --color-accent: #F2CC8F;
+  --color-danger: #EF476F;
+  --color-success: #81B29A;
+  --font-display-theme: "Zen Maru Gothic", "M PLUS Rounded 1c", sans-serif;
+  --font-balance-size: 36px;
+  --radius-card: 20px;
+  --radius-button: 999px;
+  --shadow-card: 0 4px 16px rgba(61,64,91,0.08);
+
+  /* Expo 変数をテーマ変数にマッピング（既存コンポーネントが自動更新される） */
+  --expo-blue: var(--color-primary);
+  --expo-red: var(--color-danger);
+  --expo-green: var(--color-success);
+  --expo-bg: var(--color-bg);
+  --expo-dark: var(--color-text);
+  --expo-light-blue: rgba(224, 122, 95, 0.12);
+
   /* === Semantic === */
-  --background: var(--expo-bg);
-  --foreground: var(--expo-dark);
-  --success: var(--expo-green);
-  --danger: var(--expo-red);
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+  --success: var(--color-success);
+  --danger: var(--color-danger);
   --warning: var(--expo-yellow);
-  --primary: var(--expo-blue);
+  --primary: var(--color-primary);
 
   /* === Font Scale (default 1.0) === */
   --font-scale: 1;
 }
 
-/* ダークモード対応 */
+/* ダークモード対応（data-color-scheme に変更） */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-color-scheme="light"]) {
     --background: #0f172a;
     --foreground: #f1f5f9;
     --expo-bg: #0f172a;
@@ -298,17 +322,17 @@
   }
 }
 
-/* Manual theme overrides */
-[data-theme="dark"] {
+/* Manual color scheme overrides */
+[data-color-scheme="dark"] {
   --background: #0f172a;
   --foreground: #f1f5f9;
   --expo-bg: #0f172a;
   --expo-light-blue: #1e293b;
 }
 
-[data-theme="light"] {
-  --background: var(--expo-bg);
-  --foreground: var(--expo-dark);
+[data-color-scheme="light"] {
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
 }
 
 body {
@@ -398,6 +422,139 @@ body {
 
 /* Focus ring for accessibility */
 :focus-visible {
-  outline: 2px solid var(--expo-blue);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+/* ============================================================
+   テーマシステム v01-v20 (handoff design-tokens.json より)
+   各テーマは --color-* のみ上書き。--expo-* は自動追従。
+   ============================================================ */
+
+[data-theme="v01"] {
+  --color-bg: #FFF5E1; --color-surface: #FFFFFF; --color-text: #2C1810; --color-text-dim: #8a5a3a;
+  --color-primary: #FF4D9D; --color-secondary: #4ECDC4; --color-accent: #FFD93D; --color-danger: #FF6B6B; --color-success: #4ECDC4;
+  --font-display-theme: "Fredoka","M PLUS Rounded 1c",sans-serif; --font-balance-size: 44px; --radius-card: 20px; --radius-button: 999px;
+  --shadow-card: 0 4px 0 #2C1810; --expo-light-blue: rgba(255,77,157,0.12);
+}
+[data-theme="v02"] {
+  --color-bg: #0F1A3D; --color-surface: #1A2A5C; --color-text: #F4E9C7; --color-text-dim: #B8A070;
+  --color-primary: #FFD93D; --color-secondary: #06D6A0; --color-accent: #06D6A0; --color-danger: #EF476F; --color-success: #06D6A0;
+  --font-display-theme: "Press Start 2P","M PLUS Rounded 1c",monospace; --font-balance-size: 28px; --radius-card: 4px; --radius-button: 0px;
+  --shadow-card: 4px 4px 0 #000; --expo-light-blue: rgba(255,217,61,0.15);
+}
+[data-theme="v03"] {
+  --color-bg: #FAF3DD; --color-surface: #FFFFFF; --color-text: #3D2C1E; --color-text-dim: #7a6050;
+  --color-primary: #7BA05B; --color-secondary: #A8DADC; --color-accent: #F4D35E; --color-danger: #E63946; --color-success: #7BA05B;
+  --font-display-theme: "Kosugi Maru","Zen Maru Gothic",sans-serif; --font-balance-size: 36px; --radius-card: 24px; --radius-button: 999px;
+  --shadow-card: 0 4px 12px rgba(61,44,30,0.06); --expo-light-blue: rgba(123,160,91,0.12);
+}
+[data-theme="v04"] {
+  --color-bg: #F1FAEE; --color-surface: #FFFFFF; --color-text: #1D3557; --color-text-dim: #5a7090;
+  --color-primary: #E63946; --color-secondary: #457B9D; --color-accent: #F1C453; --color-danger: #E63946; --color-success: #457B9D;
+  --font-display-theme: "Yusei Magic","Kosugi Maru",sans-serif; --font-balance-size: 40px; --radius-card: 8px; --radius-button: 8px;
+  --shadow-card: 0 2px 8px rgba(29,53,87,0.12); --expo-light-blue: rgba(230,57,70,0.1);
+}
+[data-theme="v05"] {
+  --color-bg: #0D0B14; --color-surface: #1A1625; --color-text: #FFFFFF; --color-text-dim: #A8A1B8;
+  --color-primary: #FF006E; --color-secondary: #3A86FF; --color-accent: #FFBE0B; --color-danger: #FF006E; --color-success: #3A86FF;
+  --font-display-theme: "Space Grotesk","Inter",sans-serif; --font-balance-size: 40px; --radius-card: 16px; --radius-button: 999px;
+  --shadow-card: 0 0 24px rgba(255,0,110,0.3); --expo-light-blue: rgba(255,0,110,0.15);
+}
+[data-theme="v06"] {
+  --color-bg: #FAFAFA; --color-surface: #FFFFFF; --color-text: #000000; --color-text-dim: #8E8E93;
+  --color-primary: #000000; --color-secondary: #8E8E93; --color-accent: #FF3B30; --color-danger: #FF3B30; --color-success: #34C759;
+  --font-display-theme: "Inter","Hiragino Sans",sans-serif; --font-balance-size: 44px; --radius-card: 12px; --radius-button: 8px;
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.04); --expo-light-blue: rgba(0,0,0,0.06);
+}
+[data-theme="v07"] {
+  --color-bg: #FEE3F8; --color-surface: rgba(255,255,255,0.85); --color-text: #3A2A5C; --color-text-dim: #7a5a9c;
+  --color-primary: #9B5DE5; --color-secondary: #F15BB5; --color-accent: #00BBF9; --color-danger: #F15BB5; --color-success: #00BBF9;
+  --font-display-theme: "VT323","M PLUS Rounded 1c",monospace; --font-balance-size: 42px; --radius-card: 28px; --radius-button: 999px;
+  --shadow-card: 0 8px 24px rgba(155,93,229,0.2); --expo-light-blue: rgba(155,93,229,0.12);
+}
+[data-theme="v08"] {
+  --color-bg: #F4EFE2; --color-surface: #FBF8EF; --color-text: #2D2417; --color-text-dim: #7a6a4a;
+  --color-primary: #2D5016; --color-secondary: #D67D3E; --color-accent: #D67D3E; --color-danger: #C0392B; --color-success: #2D5016;
+  --font-display-theme: "Noto Serif JP","Yu Mincho",serif; --font-balance-size: 32px; --radius-card: 4px; --radius-button: 4px;
+  --shadow-card: none; --expo-light-blue: rgba(45,80,22,0.08);
+}
+[data-theme="v09"] {
+  --color-bg: #0E0E0E; --color-surface: #1A1A1A; --color-text: #F5F5F5; --color-text-dim: #999999;
+  --color-primary: #D4AF37; --color-secondary: #D4AF37; --color-accent: #E5C76B; --color-danger: #CC3333; --color-success: #4CAF50;
+  --font-display-theme: "Playfair Display","Noto Serif JP",serif; --font-balance-size: 56px; --radius-card: 0px; --radius-button: 0px;
+  --shadow-card: none; --expo-light-blue: rgba(212,175,55,0.1);
+}
+[data-theme="v10"] {
+  --color-bg: #FFE5EC; --color-surface: #FFFFFF; --color-text: #3D2C5C; --color-text-dim: #7a5c9c;
+  --color-primary: #FF8FB1; --color-secondary: #9D8FE2; --color-accent: #FFC15E; --color-danger: #FF006E; --color-success: #9D8FE2;
+  --font-display-theme: "Mochiy Pop One","M PLUS Rounded 1c",sans-serif; --font-balance-size: 48px; --radius-card: 32px; --radius-button: 999px;
+  --shadow-card: 0 4px 20px rgba(255,143,177,0.2); --expo-light-blue: rgba(255,143,177,0.15);
+}
+[data-theme="v11"] {
+  --color-bg: #FBFBFD; --color-surface: #FFFFFF; --color-text: #1D1D1F; --color-text-dim: #6E6E73;
+  --color-primary: #0071E3; --color-secondary: #0071E3; --color-accent: #0071E3; --color-danger: #FF3B30; --color-success: #34C759;
+  --font-display-theme: "SF Pro Display","Inter",system-ui,sans-serif; --font-balance-size: 44px; --radius-card: 18px; --radius-button: 12px;
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.06); --expo-light-blue: rgba(0,113,227,0.1);
+}
+[data-theme="v12"] {
+  --color-bg: #FFFFFF; --color-surface: #000000; --color-text: #000000; --color-text-dim: #555555;
+  --color-primary: #FFE600; --color-secondary: #3A86FF; --color-accent: #FF006E; --color-danger: #FF006E; --color-success: #3A86FF;
+  --font-display-theme: "Sniglet","M PLUS Rounded 1c",cursive; --font-balance-size: 52px; --radius-card: 12px; --radius-button: 999px;
+  --shadow-card: 4px 4px 0 #000; --expo-light-blue: rgba(255,230,0,0.15);
+}
+[data-theme="v13"] {
+  --color-bg: #F7F4ED; --color-surface: #FFFFFF; --color-text: #1A1A1A; --color-text-dim: #6B6256;
+  --color-primary: #B7282E; --color-secondary: #4a6741; --color-accent: #B7282E; --color-danger: #B7282E; --color-success: #4a6741;
+  --font-display-theme: "Noto Serif JP","Yu Mincho",serif; --font-balance-size: 42px; --radius-card: 4px; --radius-button: 4px;
+  --shadow-card: none; --expo-light-blue: rgba(183,40,46,0.08);
+}
+[data-theme="v14"] {
+  --color-bg: #F4F1DE; --color-surface: #FFFFFF; --color-text: #3D405B; --color-text-dim: #7A7C9A;
+  --color-primary: #E07A5F; --color-secondary: #81B29A; --color-accent: #F2CC8F; --color-danger: #EF476F; --color-success: #81B29A;
+  --font-display-theme: "Zen Maru Gothic","M PLUS Rounded 1c",sans-serif; --font-balance-size: 36px; --radius-card: 20px; --radius-button: 999px;
+  --shadow-card: 0 4px 16px rgba(61,64,91,0.08); --expo-light-blue: rgba(224,122,95,0.12);
+}
+[data-theme="v15"] {
+  --color-bg: #0F0F23; --color-surface: #1A1B36; --color-text: #FFFFFF; --color-text-dim: #8B8DA8;
+  --color-primary: #00D9A3; --color-secondary: #00D9A3; --color-accent: #00D9A3; --color-danger: #FF5C7C; --color-success: #00D9A3;
+  --font-display-theme: "DM Sans","Inter",sans-serif; --font-balance-size: 38px; --radius-card: 16px; --radius-button: 12px;
+  --shadow-card: 0 4px 20px rgba(0,217,163,0.15); --expo-light-blue: rgba(0,217,163,0.12);
+}
+[data-theme="v16"] {
+  --color-bg: #E9DFC9; --color-surface: #FBF7EF; --color-text: #3A2817; --color-text-dim: #7a5a30;
+  --color-primary: #C97B4F; --color-secondary: #5C3A21; --color-accent: #C97B4F; --color-danger: #8B1A1A; --color-success: #5C3A21;
+  --font-display-theme: "Special Elite","Noto Serif JP",serif; --font-balance-size: 38px; --radius-card: 6px; --radius-button: 4px;
+  --shadow-card: 0 2px 4px rgba(90,58,33,0.15); --expo-light-blue: rgba(201,123,79,0.1);
+}
+[data-theme="v17"] {
+  --color-bg: #F8FAFC; --color-surface: #FFFFFF; --color-text: #0F172A; --color-text-dim: #64748B;
+  --color-primary: #1E40AF; --color-secondary: #3B82F6; --color-accent: #3B82F6; --color-danger: #DC2626; --color-success: #10B981;
+  --font-display-theme: "Inter","Hiragino Sans",system-ui,sans-serif; --font-balance-size: 24px; --radius-card: 8px; --radius-button: 6px;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.08); --expo-light-blue: rgba(30,64,175,0.08);
+}
+[data-theme="v18"] {
+  --color-bg: #FFFFFF; --color-surface: #FFFFFF; --color-text: #000000; --color-text-dim: #737373;
+  --color-primary: #000000; --color-secondary: #737373; --color-accent: #000000; --color-danger: #CC0000; --color-success: #007700;
+  --font-display-theme: "Inter",system-ui,sans-serif; --font-balance-size: 36px; --radius-card: 6px; --radius-button: 6px;
+  --shadow-card: 0 0 0 1px #E5E5E5; --expo-light-blue: rgba(0,0,0,0.05);
+}
+[data-theme="v19"] {
+  --color-bg: #F0FDF4; --color-surface: #FFFFFF; --color-text: #14532D; --color-text-dim: #4D6B5A;
+  --color-primary: #16A34A; --color-secondary: #0891B2; --color-accent: #0891B2; --color-danger: #DC2626; --color-success: #16A34A;
+  --font-display-theme: "Inter","Noto Sans JP",sans-serif; --font-balance-size: 26px; --radius-card: 12px; --radius-button: 8px;
+  --shadow-card: 0 2px 8px rgba(22,163,74,0.1); --expo-light-blue: rgba(22,163,74,0.1);
+}
+[data-theme="v20"] {
+  --color-bg: #0B0F1A; --color-surface: #1F2937; --color-text: #E5E7EB; --color-text-dim: #9CA3AF;
+  --color-primary: #10B981; --color-secondary: #FBBF24; --color-accent: #FBBF24; --color-danger: #EF4444; --color-success: #10B981;
+  --font-display-theme: "JetBrains Mono","Source Code Pro",monospace; --font-balance-size: 22px; --radius-card: 4px; --radius-button: 4px;
+  --shadow-card: 0 0 0 1px rgba(255,255,255,0.05); --expo-light-blue: rgba(16,185,129,0.12);
+}
+
+/* テーマ切替アニメーション */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-theme] {
+    transition: background-color 180ms ease-out, color 180ms ease-out;
+  }
 }
