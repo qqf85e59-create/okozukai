@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Check } from "lucide-react";
 import { useConcept, type Concept } from "@/components/ConceptThemeProvider";
+import { useTheme } from "@/components/ThemeProvider";
+import { THEMES, type ThemeId } from "@/themes/registry";
 
 type User = { id: string; displayName: string; role: string };
 
@@ -12,6 +14,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const [me, setMe] = useState<User | null>(null);
   const { concept, setConcept } = useConcept();
+  const { themeId, setThemeId } = useTheme();
   const [theme, setTheme] = useState<"auto" | "light" | "dark">("auto");
   const [fontScale, setFontScale] = useState("1");
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -46,9 +49,9 @@ export default function SettingsPage() {
     setTheme(newTheme);
     localStorage.setItem("okozukai-theme", newTheme);
     if (newTheme === "auto") {
-      document.documentElement.removeAttribute("data-theme");
+      document.documentElement.removeAttribute("data-color-scheme");
     } else {
-      document.documentElement.setAttribute("data-theme", newTheme);
+      document.documentElement.setAttribute("data-color-scheme", newTheme);
     }
   };
 
@@ -194,7 +197,44 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* テーマ */}
+        {/* 20テーマセレクター */}
+        <section className="bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+          <h2 className="font-black text-gray-800 dark:text-gray-100 mb-1">カラーテーマ</h2>
+          <p className="text-xs text-gray-400 mb-4">アプリのカラーパレットを選択します（20種類）</p>
+          <div className="grid grid-cols-4 gap-2">
+            {(Object.values(THEMES) as typeof THEMES[ThemeId][]).map((t) => {
+              const active = themeId === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setThemeId(t.id)}
+                  title={`${t.nameJp} (${t.audience})`}
+                  className="relative flex flex-col items-center gap-1 p-2 rounded-xl transition-all active:scale-95"
+                  style={{
+                    border: active ? `2px solid ${t.colors.primary}` : "2px solid #e5e7eb",
+                    background: t.colors.bg,
+                  }}
+                >
+                  <div className="flex gap-0.5">
+                    <span className="w-3 h-3 rounded-full" style={{ background: t.colors.primary }} />
+                    <span className="w-3 h-3 rounded-full" style={{ background: t.colors.accent }} />
+                  </div>
+                  <span className="text-[9px] font-bold leading-tight text-center" style={{ color: t.colors.text }}>
+                    {t.id.toUpperCase()}
+                  </span>
+                  {active && (
+                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full" style={{ background: t.colors.primary }} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-gray-400 mt-3 text-center">
+            現在: <span className="font-bold" style={{ color: "var(--color-primary)" }}>{THEMES[themeId].nameJp}</span>（{THEMES[themeId].audience}向け）
+          </p>
+        </section>
+
+        {/* ライト/ダークモード */}
         <section className="bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
           <h2 className="font-black text-gray-800 dark:text-gray-100 mb-3">テーマ</h2>
           <div className="flex gap-2">
