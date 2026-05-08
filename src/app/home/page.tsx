@@ -331,6 +331,7 @@ function GoalCard({
 export default function HomePage() {
   const router = useRouter();
   const [me, setMe] = useState<User | null>(null);
+  const [parentDataLoaded, setParentDataLoaded] = useState(false);
   const [balance, setBalance] = useState<BalanceData | null>(null);
   const [yenBalance, setYenBalance] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -475,6 +476,7 @@ export default function HomePage() {
           if (stored) setRecentItemIds(JSON.parse(stored));
         } catch { /* ignore */ }
       } else {
+        setParentDataLoaded(false);
         const [usersRes, pendingRes, itemsRes, choreRes, penaltyRes] = await Promise.all([
           fetch("/api/users"),
           fetch("/api/requests?status=pending"),
@@ -497,6 +499,7 @@ export default function HomePage() {
           const penaltyData: Item[] = await penaltyRes.json();
           setMasterPenaltyItems(penaltyData.map((i) => ({ ...i, category: "penalty", isActive: true })));
         }
+        setParentDataLoaded(true);
       }
     } catch {
       // ネットワークエラーは無視
@@ -741,22 +744,25 @@ export default function HomePage() {
     }
   };
 
-  if (!me) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div
-            className="w-12 h-12 rounded-full border-4 border-t-transparent animate-spin mx-auto"
-            style={{ borderColor: "#3B4CCA", borderTopColor: "transparent" }}
-          />
-          <p className="mt-3 font-bold text-gray-500 dark:text-gray-300">よみこみ中...</p>
-        </div>
+  const loadingView = (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <div
+          className="w-12 h-12 rounded-full border-4 border-t-transparent animate-spin mx-auto"
+          style={{ borderColor: "#3B4CCA", borderTopColor: "transparent" }}
+        />
+        <p className="mt-3 font-bold text-gray-500 dark:text-gray-300">よみこみ中...</p>
       </div>
-    );
-  }
+    </div>
+  );
+
+  if (!me) return loadingView;
+
+  const isParentRole = me.role === "approver" || me.role === "admin";
+  if (isParentRole && !parentDataLoaded) return loadingView;
 
   /* ─────── 親ビュー ─────── */
-  if (isParent) {
+  if (isParentRole) {
     const children = allUsers.filter((u) => u.role === "child");
 
     // 参照用マスタ（ChoreItem/PenaltyItem、category は正規化済み）

@@ -73,14 +73,16 @@ export function Nav({ role, displayName }: Props) {
   ];
 
   const PARENT_ITEMS = [
-    { href: "/home",          label: copy.home,     Icon: Home },
-    { href: "/approvals",     label: "承認待ち",    Icon: Bell },
-    { href: "/penalties/new", label: "ペナルティ",  Icon: AlertTriangle },
-    { href: "/items",         label: copy.items,    Icon: Database },
-    { href: "/expenses",      label: copy.expenses, Icon: Receipt },
-    { href: "/history",       label: copy.history,  Icon: BookOpen },
-    { href: "/report",        label: copy.report,   Icon: BarChart3 },
-    { href: "/audit",         label: copy.audit,    Icon: Settings },
+    { href: "/home",                  label: copy.home,       Icon: Home },
+    { href: "/approvals",             label: "承認待ち",      Icon: Bell },
+    { href: "/penalties/new",         label: "ペナルティ",    Icon: AlertTriangle },
+    { href: "/items",                 label: copy.items,      Icon: Database },
+    { href: "/admin/chore-items",     label: "おてつだい項目", Icon: ListChecks },
+    { href: "/admin/penalty-items",   label: "ペナルティ項目", Icon: AlertTriangle },
+    { href: "/expenses",              label: copy.expenses,   Icon: Receipt },
+    { href: "/history",               label: copy.history,    Icon: BookOpen },
+    { href: "/report",                label: copy.report,     Icon: BarChart3 },
+    { href: "/audit",                 label: copy.audit,      Icon: Settings },
   ];
 
   const ADMIN_ONLY_ITEMS = [
