@@ -1,33 +1,15 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext } from "react";
 
 export type Concept = "cosmic" | "pixel" | "workshop" | "arcade";
 
-const STORAGE_KEY = "okozukai-concept";
-const DEFAULT: Concept = "workshop";
-
 type ConceptCtx = { concept: Concept; setConcept: (c: Concept) => void };
-const ConceptContext = createContext<ConceptCtx>({ concept: DEFAULT, setConcept: () => {} });
+const ConceptContext = createContext<ConceptCtx>({ concept: "workshop", setConcept: () => {} });
 
 export function ConceptThemeProvider({ children }: { children: React.ReactNode }) {
-  const [concept, setConceptState] = useState<Concept>(DEFAULT);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY) as Concept | null;
-    const initial = saved ?? DEFAULT;
-    setConceptState(initial);
-    document.documentElement.setAttribute("data-concept", initial);
-  }, []);
-
-  const setConcept = (c: Concept) => {
-    setConceptState(c);
-    localStorage.setItem(STORAGE_KEY, c);
-    document.documentElement.setAttribute("data-concept", c);
-  };
-
   return (
-    <ConceptContext.Provider value={{ concept, setConcept }}>
+    <ConceptContext.Provider value={{ concept: "workshop", setConcept: () => {} }}>
       {children}
     </ConceptContext.Provider>
   );
