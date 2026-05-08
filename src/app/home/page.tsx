@@ -9,7 +9,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Toast } from "@/components/Toast";
 import { LabelWithGloss } from "@/components/LabelWithGloss";
 import { ProgressHeatmap } from "@/components/ProgressHeatmap";
-import { ChevronDown, Star, Flame, Trophy, Award, Crown, Coins, Banknote, Target, PlusCircle, ShoppingBag, Timer, Zap } from "lucide-react";
+import { ChevronDown, Star, Flame, Trophy, Award, Crown, Coins, Banknote, Target, PlusCircle, ShoppingBag, Timer, Zap, AlertTriangle } from "lucide-react";
 
 const BADGE_ICONS: Record<string, React.ElementType> = {
   Flame, Trophy, Star, Award, Crown, Coins, Banknote, Target,
@@ -81,8 +81,18 @@ type UserWithBalance = {
   yenBalance: number;
 };
 
+type PenaltyItemWithMeta = {
+  id: string;
+  name: string;
+  effectiveMin: number;
+  category: string;
+  isActive: boolean;
+  mode?: string;
+  unitLabel?: string | null;
+};
+
 import { formatMin, formatYen, formatSignedMin } from "@/lib/format";
-import { MINUTES_PER_UNIT, YEN_PER_UNIT } from "@/lib/constants";
+import { MINUTES_PER_UNIT, YEN_PER_UNIT, CASHOUT_FEE } from "@/lib/constants";
 import { Minus, Plus } from "lucide-react";
 
 /* 今週月曜0時 */
@@ -341,6 +351,23 @@ export default function HomePage() {
   const [windfallNote, setWindfallNote] = useState("");
   const [windfallLoading, setWindfallLoading] = useState(false);
 
+  // ペナルティ登録モーダル（親用）
+  const [penaltyTarget, setPenaltyTarget] = useState<{ id: string; name: string } | null>(null);
+  const [penaltyItemId, setPenaltyItemId] = useState("");
+  const [penaltyCount, setPenaltyCount] = useState("1");
+  const [penaltyActualValue, setPenaltyActualValue] = useState("1");
+  const [penaltyOccurredAt, setPenaltyOccurredAt] = useState(new Date().toISOString().slice(0, 10));
+  const [penaltyReason, setPenaltyReason] = useState("");
+  const [penaltyLoading, setPenaltyLoading] = useState(false);
+
+  // 換金モーダル（親が子の代わりに換金）
+  const [cashoutTarget, setCashoutTarget] = useState<{ id: string; name: string; yenBalance: number } | null>(null);
+  const [cashoutLoading, setCashoutLoading] = useState(false);
+
+  // 時間→円換算モーダル（親が子の時間を換算）
+  const [timeConvertTarget, setTimeConvertTarget] = useState<{ id: string; name: string; accMin: number } | null>(null);
+  const [timeConvertLoading, setTimeConvertLoading] = useState(false);
+
   // 支出モーダル（子供用）
   const [showSpendingForm, setShowSpendingForm] = useState(false);
   const [spendingCategory, setSpendingCategory] = useState<SpendingCat>("food");
@@ -368,7 +395,7 @@ export default function HomePage() {
 
   // ChoreItem/PenaltyItem マスタ（親ビュー参照用）
   const [masterChoreItems, setMasterChoreItems] = useState<Item[]>([]);
-  const [masterPenaltyItems, setMasterPenaltyItems] = useState<Item[]>([]);
+  const [masterPenaltyItems, setMasterPenaltyItems] = useState<PenaltyItemWithMeta[]>([]);
   const [todayConsumeMin, setTodayConsumeMin] = useState(0);
 
   // 今日の残高詳細（改善1）
@@ -610,6 +637,89 @@ export default function HomePage() {
     }
   };
 
+  const handlePenaltySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!penaltyTarget || !penaltyItemId || !penaltyReason.trim()) return;
+    const selectedItem = masterPenaltyItems.find((i) => i.id === penaltyItemId);
+    const isProportional = selectedItem?.mode === "PROPORTIONAL";
+    setPenaltyLoading(true);
+    const res = await fetch("/api/penalty-events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: penaltyTarget.id,
+        penaltyItemId,
+        count: isProportional ? 1 : Number(penaltyCount),
+        actualValue: isProportional ? Number(penaltyActualValue) : undefined,
+        occurredAt: penaltyOccurredAt,
+        reason: penaltyReason.trim(),
+      }),
+    });
+    setPenaltyLoading(false);
+    if (res.ok) {
+      setPenaltyTarget(null);
+      setPenaltyItemId("");
+      setPenaltyReason("");
+      setToast(`${penaltyTarget.name} にペナルティを記録しました`);
+      fetchData();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setToast(err.error ?? "エラーが発生しました");
+    }
+  };
+
+  const handleCashout = async () => {
+    if (!cashoutTarget) return;
+    setCashoutLoading(true);
+    const res = await fetch("/api/cashouts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: cashoutTarget.id }),
+    });
+    setCashoutLoading(false);
+    if (res.ok) {
+      const data = await res.json();
+      setCashoutTarget(null);
+      const sign = data.netYen >= 0 ? "+" : "";
+      setToast(`換金しました（${sign}${data.netYen.toLocaleString()}円）`);
+      fetchData();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setToast(err.error ?? "換金に失敗しました");
+    }
+  };
+
+  const handleTimeConvertForChild = async () => {
+    if (!timeConvertTarget) return;
+    const { accMin } = timeConvertTarget;
+    const isNegative = accMin < 0;
+    const absMin = Math.abs(accMin);
+    const convertibleMin = Math.floor(absMin / MINUTES_PER_UNIT) * MINUTES_PER_UNIT;
+    if (convertibleMin < MINUTES_PER_UNIT) {
+      setToast(`換算できる時間がありません（${MINUTES_PER_UNIT}分単位）`);
+      setTimeConvertTarget(null);
+      return;
+    }
+    const minutesUsed = isNegative ? -convertibleMin : convertibleMin;
+    setTimeConvertLoading(true);
+    const res = await fetch("/api/time-converts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: timeConvertTarget.id, minutesUsed }),
+    });
+    setTimeConvertLoading(false);
+    if (res.ok) {
+      const data = await res.json();
+      setTimeConvertTarget(null);
+      const yenStr = data.yenGained >= 0 ? `+${data.yenGained.toLocaleString()}円` : `${data.yenGained.toLocaleString()}円`;
+      setToast(`${formatMin(Math.abs(minutesUsed))} → ${yenStr} に換算しました`);
+      fetchData();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setToast(err.error ?? "換算に失敗しました");
+    }
+  };
+
   const handleSpending = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!spendingAmount) return;
@@ -735,24 +845,64 @@ export default function HomePage() {
           <section>
             <h2 className="font-black text-gray-700 mb-3">みんなの残高</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {children.map((u) => (
-                <div key={u.id} className="space-y-2">
-                  <BalanceSummary
-                    displayName={u.displayName}
-                    gradeLabel={u.grade?.gradeLabel}
-                    balance={u.balance}
-                    compact
-                  />
-                  <button
-                    onClick={() => { setWindfallTarget({ id: u.id, name: u.displayName }); setWindfallLabel(""); setWindfallAmount(""); setWindfallNote(""); }}
-                    className="w-full flex items-center justify-center gap-2 py-2 rounded-xl font-black text-sm text-white transition-all active:scale-95"
-                    style={{ background: "#f59e0b", border: "2px solid #b45309", boxShadow: "0 2px 0 #b45309" }}
-                  >
-                    <PlusCircle size={15} />
-                    ＋臨時収入
-                  </button>
-                </div>
-              ))}
+              {children.map((u) => {
+                const accMin = u.balance?.accumulatedMin ?? 0;
+                const yenBal = u.yenBalance ?? 0;
+                const canCashout = yenBal !== 0 && !(yenBal > 0 && yenBal < CASHOUT_FEE);
+                const canConvert = Math.abs(accMin) >= MINUTES_PER_UNIT;
+                return (
+                  <div key={u.id} className="space-y-2">
+                    <BalanceSummary
+                      displayName={u.displayName}
+                      gradeLabel={u.grade?.gradeLabel}
+                      balance={u.balance}
+                      compact
+                    />
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        onClick={() => { setWindfallTarget({ id: u.id, name: u.displayName }); setWindfallLabel(""); setWindfallAmount(""); setWindfallNote(""); }}
+                        className="flex items-center justify-center gap-1.5 py-2 rounded-xl font-black text-xs text-white transition-all active:scale-95"
+                        style={{ background: "#f59e0b", border: "2px solid #b45309", boxShadow: "0 2px 0 #b45309" }}
+                      >
+                        <PlusCircle size={13} />
+                        臨時収入
+                      </button>
+                      <button
+                        onClick={() => {
+                          setPenaltyTarget({ id: u.id, name: u.displayName });
+                          setPenaltyItemId(""); setPenaltyCount("1"); setPenaltyActualValue("1");
+                          setPenaltyReason(""); setPenaltyOccurredAt(new Date().toISOString().slice(0, 10));
+                        }}
+                        className="flex items-center justify-center gap-1.5 py-2 rounded-xl font-black text-xs text-white transition-all active:scale-95"
+                        style={{ background: "var(--expo-red)", border: "2px solid #7f1d1d", boxShadow: "0 2px 0 #7f1d1d" }}
+                      >
+                        <AlertTriangle size={13} />
+                        ペナルティ
+                      </button>
+                      {canConvert && (
+                        <button
+                          onClick={() => setTimeConvertTarget({ id: u.id, name: u.displayName, accMin })}
+                          className="flex items-center justify-center gap-1.5 py-2 rounded-xl font-black text-xs text-white transition-all active:scale-95"
+                          style={{ background: "var(--expo-blue)", border: "2px solid #0d2d6b", boxShadow: "0 2px 0 #0d2d6b" }}
+                        >
+                          <Timer size={13} />
+                          時間→円
+                        </button>
+                      )}
+                      {canCashout && (
+                        <button
+                          onClick={() => setCashoutTarget({ id: u.id, name: u.displayName, yenBalance: yenBal })}
+                          className="flex items-center justify-center gap-1.5 py-2 rounded-xl font-black text-xs text-white transition-all active:scale-95"
+                          style={{ background: "var(--expo-green, #4DAD5B)", border: "2px solid #166534", boxShadow: "0 2px 0 #166534" }}
+                        >
+                          <Coins size={13} />
+                          換金する
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </section>
 
@@ -908,6 +1058,216 @@ export default function HomePage() {
                     実行する
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ペナルティ登録モーダル */}
+        {penaltyTarget && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden" style={{ border: "3px solid var(--expo-red)" }}>
+              <div className="px-5 py-3 font-display text-white flex items-center gap-2" style={{ background: "var(--expo-red)" }}>
+                <AlertTriangle size={16} />
+                {penaltyTarget.name} のペナルティを記録
+              </div>
+              <form onSubmit={handlePenaltySubmit} className="p-5 space-y-4">
+                {masterPenaltyItems.filter((i) => i.isActive).length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">ペナルティ項目がありません</p>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-black mb-2" style={{ color: "var(--expo-red)" }}>ペナルティ項目</label>
+                    <div className="space-y-1 max-h-40 overflow-y-auto rounded-xl" style={{ border: "2px solid #fca5a5" }}>
+                      {masterPenaltyItems.filter((i) => i.isActive).map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setPenaltyItemId(item.id === penaltyItemId ? "" : item.id)}
+                          className="w-full flex items-center justify-between px-3 py-2 text-left text-sm font-bold transition-colors"
+                          style={penaltyItemId === item.id ? { background: "#fef2f2", color: "var(--expo-red)" } : {}}
+                        >
+                          <span>{item.name}</span>
+                          <span className="font-black text-xs" style={{ color: "var(--expo-red)" }}>
+                            {formatMin(item.effectiveMin)}
+                            {item.mode === "PROPORTIONAL" && item.unitLabel ? `/${item.unitLabel}` : ""}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {penaltyItemId && (() => {
+                  const sel = masterPenaltyItems.find((i) => i.id === penaltyItemId);
+                  if (!sel) return null;
+                  const isProportional = sel.mode === "PROPORTIONAL";
+                  const previewMin = isProportional
+                    ? sel.effectiveMin * Math.max(1, Number(penaltyActualValue) || 1)
+                    : sel.effectiveMin * Math.max(1, Number(penaltyCount) || 1);
+                  return (
+                    <div className="space-y-3">
+                      {isProportional ? (
+                        <div>
+                          <label className="block text-sm font-black mb-1" style={{ color: "var(--expo-red)" }}>
+                            {sel.unitLabel ?? "超過量"}
+                          </label>
+                          <input
+                            type="number" min="1"
+                            value={penaltyActualValue}
+                            onChange={(e) => setPenaltyActualValue(e.target.value)}
+                            className="w-full rounded-xl px-3 py-2 text-sm font-bold focus:outline-none"
+                            style={{ border: "2px solid #fca5a5" }}
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-sm font-black mb-1" style={{ color: "var(--expo-red)" }}>回数</label>
+                          <input
+                            type="number" min="1" max="20"
+                            value={penaltyCount}
+                            onChange={(e) => setPenaltyCount(e.target.value)}
+                            className="w-full rounded-xl px-3 py-2 text-sm font-bold focus:outline-none"
+                            style={{ border: "2px solid #fca5a5" }}
+                          />
+                        </div>
+                      )}
+                      <p className="text-center text-sm font-black" style={{ color: "var(--expo-red)" }}>
+                        ペナルティ: {formatMin(previewMin)}
+                      </p>
+                    </div>
+                  );
+                })()}
+                <div>
+                  <label className="block text-sm font-black mb-1" style={{ color: "var(--expo-red)" }}>発生日</label>
+                  <input
+                    type="date"
+                    value={penaltyOccurredAt}
+                    onChange={(e) => setPenaltyOccurredAt(e.target.value)}
+                    className="w-full rounded-xl px-3 py-2 text-sm font-bold focus:outline-none"
+                    style={{ border: "2px solid #e5e7eb" }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-black mb-1" style={{ color: "var(--expo-red)" }}>
+                    理由 <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={penaltyReason}
+                    onChange={(e) => setPenaltyReason(e.target.value)}
+                    placeholder="具体的な状況を書いてください"
+                    rows={2}
+                    required
+                    className="w-full rounded-xl px-3 py-2 text-sm font-bold resize-none focus:outline-none"
+                    style={{ border: "2px solid #fca5a5" }}
+                  />
+                </div>
+                <div className="flex gap-3 pt-1">
+                  <button type="button" onClick={() => setPenaltyTarget(null)}
+                    className="flex-1 py-3 rounded-xl font-black text-gray-600 active:scale-95"
+                    style={{ border: "2px solid #d1d5db" }}>
+                    キャンセル
+                  </button>
+                  <button type="submit"
+                    disabled={penaltyLoading || !penaltyItemId || !penaltyReason.trim()}
+                    className="flex-1 py-3 rounded-xl font-black text-white active:scale-95 disabled:opacity-50"
+                    style={{ background: "var(--expo-red)", border: "2px solid #7f1d1d", boxShadow: "0 3px 0 #7f1d1d" }}>
+                    {penaltyLoading ? "記録中..." : "記録する"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* 換金確認モーダル */}
+        {cashoutTarget && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden" style={{ border: "3px solid #4DAD5B" }}>
+              <div className="px-5 py-3 font-display text-white" style={{ background: "#4DAD5B" }}>
+                {cashoutTarget.name} の換金
+              </div>
+              <div className="p-5 space-y-4">
+                <div className="text-center py-3">
+                  <p className="text-xs font-black text-gray-500 tracking-widest">現在の残高</p>
+                  <p className="font-display text-3xl mt-1" style={{ color: cashoutTarget.yenBalance < 0 ? "var(--expo-red)" : "#4DAD5B" }}>
+                    {cashoutTarget.yenBalance.toLocaleString()}円
+                  </p>
+                  {cashoutTarget.yenBalance >= CASHOUT_FEE && (
+                    <p className="text-xs font-black text-gray-400 mt-1">
+                      手数料{CASHOUT_FEE}円 → 受取 {(cashoutTarget.yenBalance - CASHOUT_FEE).toLocaleString()}円
+                    </p>
+                  )}
+                  {cashoutTarget.yenBalance < 0 && (
+                    <p className="text-xs font-black mt-1" style={{ color: "var(--expo-red)" }}>
+                      マイナス残高（手数料なし）→ 負債 {cashoutTarget.yenBalance.toLocaleString()}円を記録
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setCashoutTarget(null)}
+                    className="flex-1 py-3 rounded-xl font-black text-gray-600 active:scale-95"
+                    style={{ border: "2px solid #d1d5db" }}>
+                    キャンセル
+                  </button>
+                  <button onClick={handleCashout} disabled={cashoutLoading}
+                    className="flex-1 py-3 rounded-xl font-black text-white active:scale-95 disabled:opacity-50"
+                    style={{ background: "#4DAD5B", border: "2px solid #166534", boxShadow: "0 3px 0 #166534" }}>
+                    {cashoutLoading ? "処理中..." : "換金する"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 時間→円換算モーダル */}
+        {timeConvertTarget && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden" style={{ border: "3px solid var(--expo-blue)" }}>
+              <div className="px-5 py-3 font-display text-white" style={{ background: "var(--expo-blue)" }}>
+                {timeConvertTarget.name} の時間を換算
+              </div>
+              <div className="p-5 space-y-4">
+                {(() => {
+                  const { accMin } = timeConvertTarget;
+                  const isNegative = accMin < 0;
+                  const absMin = Math.abs(accMin);
+                  const convertible = Math.floor(absMin / MINUTES_PER_UNIT) * MINUTES_PER_UNIT;
+                  const yenResult = (convertible / MINUTES_PER_UNIT) * YEN_PER_UNIT * (isNegative ? -1 : 1);
+                  return (
+                    <>
+                      <div className="text-center py-2">
+                        <p className="text-xs font-black text-gray-500 tracking-widest">現在の時間残高</p>
+                        <p className="font-display text-3xl mt-1" style={{ color: isNegative ? "var(--expo-red)" : "var(--expo-blue)" }}>
+                          {formatMin(accMin)}
+                        </p>
+                        {isNegative && (
+                          <p className="text-xs font-black mt-0.5" style={{ color: "var(--expo-red)" }}>マイナス残高</p>
+                        )}
+                      </div>
+                      <div className="rounded-xl p-3 text-center" style={{ background: isNegative ? "#fef2f2" : "#eff6ff" }}>
+                        <p className="text-xs font-black text-gray-500">換算量</p>
+                        <p className="font-display text-xl mt-0.5" style={{ color: isNegative ? "var(--expo-red)" : "var(--expo-blue)" }}>
+                          {formatMin(isNegative ? -convertible : convertible)} → {yenResult >= 0 ? "+" : ""}{yenResult.toLocaleString()}円
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          {MINUTES_PER_UNIT}分 = {isNegative ? `-${YEN_PER_UNIT}円` : `+${YEN_PER_UNIT}円`}
+                        </p>
+                      </div>
+                      <div className="flex gap-3">
+                        <button onClick={() => setTimeConvertTarget(null)}
+                          className="flex-1 py-3 rounded-xl font-black text-gray-600 active:scale-95"
+                          style={{ border: "2px solid #d1d5db" }}>
+                          キャンセル
+                        </button>
+                        <button onClick={handleTimeConvertForChild} disabled={timeConvertLoading || convertible < MINUTES_PER_UNIT}
+                          className="flex-1 py-3 rounded-xl font-black text-white active:scale-95 disabled:opacity-50"
+                          style={{ background: "var(--expo-blue)", border: "2px solid #0d2d6b", boxShadow: "0 3px 0 #0d2d6b" }}>
+                          {timeConvertLoading ? "換算中..." : "換算する"}
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>

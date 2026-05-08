@@ -23,24 +23,36 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const userId = req.headers.get("x-user-id") ?? "";
+  const requesterId = req.headers.get("x-user-id") ?? "";
   const role = req.headers.get("x-user-role") ?? "";
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!isChild(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!requesterId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const isParent = role === "approver" || role === "admin";
+  if (!isChild(role) && !isParent) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const body = await req.json();
+  // Parent can specify a child's userId; child uses their own
+  const userId = (isParent && body.userId) ? body.userId : requesterId;
   const minutesUsed = Number(body.minutesUsed);
 
-  if (!minutesUsed || minutesUsed < MINUTES_PER_UNIT || minutesUsed % MINUTES_PER_UNIT !== 0) {
+  const absMin = Math.abs(minutesUsed);
+  if (!minutesUsed || absMin < MINUTES_PER_UNIT || absMin % MINUTES_PER_UNIT !== 0) {
     return NextResponse.json(
       { error: `${MINUTES_PER_UNIT}分単位で入力してください` },
       { status: 400 }
     );
   }
 
+  // Children cannot initiate negative conversions (debt settlement is parent-only)
+  if (isChild(role) && minutesUsed < 0) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const { yenGained } = await convertTimeToYen(userId, minutesUsed);
-    await audit(userId, "time-convert.create", "TimeConvert", userId, { minutesUsed, yenGained });
+    await audit(requesterId, "time-convert.create", "TimeConvert", userId, { minutesUsed, yenGained });
     return NextResponse.json({ ok: true, minutesUsed, yenGained }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "換算に失敗しました";

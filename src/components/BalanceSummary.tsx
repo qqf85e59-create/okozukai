@@ -38,19 +38,21 @@ export function BalanceSummary({ displayName, gradeLabel, balance, streak, compa
   const accMin = balance?.accumulatedMin ?? 0;
   const goalPct = Math.max(0, Math.min(100, Math.round((animatedAmount / 5000) * 100)));
 
+  const isTimeDebt = accMin < 0;
+
   if (compact) {
     return (
       <div
         className="rounded-3xl overflow-hidden shadow-sm"
         style={{
           background: "var(--c-surface, white)",
-          border: `2px solid ${isDebt ? "var(--c-danger, var(--expo-red))" : "var(--c-border-strong, var(--expo-light-blue))"}`,
+          border: `2px solid ${isDebt || isTimeDebt ? "var(--c-danger, var(--expo-red))" : "var(--c-border-strong, var(--expo-light-blue))"}`,
         }}
       >
         <div
           className="px-5 py-3 flex items-center justify-between"
           style={{
-            background: isDebt
+            background: isDebt || isTimeDebt
               ? "linear-gradient(135deg, var(--c-danger, var(--expo-red)) 0%, oklch(0.45 0.18 25) 100%)"
               : "linear-gradient(135deg, var(--c-accent, var(--expo-blue)) 0%, var(--c-accent-2, #004d8c) 100%)",
           }}
@@ -60,12 +62,17 @@ export function BalanceSummary({ displayName, gradeLabel, balance, streak, compa
             {gradeLabel && (
               <p className="text-[10px] font-bold" style={{ color: "rgba(255,255,255,0.8)" }}>{gradeLabel}</p>
             )}
+            {/* 時間残高 */}
+            <p className="text-xs font-black mt-0.5" style={{ color: isTimeDebt ? "#fecaca" : "rgba(255,255,255,0.85)" }}>
+              ⏱ {formatMinutes(accMin)}
+              {isTimeDebt && " (マイナス)"}
+            </p>
           </div>
           <div className="text-right flex flex-col items-end gap-1">
             <p className="font-display text-2xl text-white">
               {animatedAmount.toLocaleString("ja-JP")}円
             </p>
-            {isDebt && (
+            {(isDebt || isTimeDebt) && (
               <span
                 className="inline-block text-[10px] font-black px-2 py-0.5 rounded-full"
                 style={{ background: "white", color: "var(--c-danger, var(--expo-red))" }}

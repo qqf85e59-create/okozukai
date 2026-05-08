@@ -49,13 +49,20 @@ export async function convertTimeToYen(
   userId: string,
   minutesUsed: number
 ): Promise<{ yenGained: number }> {
-  if (minutesUsed < MINUTES_PER_UNIT || minutesUsed % MINUTES_PER_UNIT !== 0) {
+  const absMin = Math.abs(minutesUsed);
+  if (absMin < MINUTES_PER_UNIT || absMin % MINUTES_PER_UNIT !== 0) {
     throw new Error(`minutesUsed must be a multiple of ${MINUTES_PER_UNIT}`);
   }
 
   const balance = await prisma.balance.findUnique({ where: { userId } });
-  if (!balance || balance.accumulatedMin < minutesUsed) {
+  if (!balance) throw new Error("Balance not found");
+
+  if (minutesUsed > 0 && balance.accumulatedMin < minutesUsed) {
     throw new Error("Insufficient time balance");
+  }
+  if (minutesUsed < 0 && balance.accumulatedMin > minutesUsed) {
+    // e.g. accumulatedMin = -60, minutesUsed = -120 → trying to convert more debt than exists
+    throw new Error("Insufficient negative time balance");
   }
 
   const yenGained = (minutesUsed / MINUTES_PER_UNIT) * YEN_PER_UNIT;
@@ -95,12 +102,16 @@ export async function cashOut(
   note?: string
 ): Promise<{ grossYen: number; feeYen: number; netYen: number }> {
   const balance = await prisma.balance.findUnique({ where: { userId } });
-  if (!balance || balance.virtualAmount < CASHOUT_FEE) {
-    throw new Error("Insufficient balance");
+  if (!balance) throw new Error("Balance not found");
+  if (balance.virtualAmount === 0) throw new Error("残高がゼロです");
+  // Positive balance below fee minimum is blocked; negative balances are allowed (recording debt)
+  if (balance.virtualAmount > 0 && balance.virtualAmount < CASHOUT_FEE) {
+    throw new Error(`最低${CASHOUT_FEE}円から換金できます`);
   }
 
   const grossYen = balance.virtualAmount;
-  const feeYen = CASHOUT_FEE;
+  // Fee only when there is enough positive balance; waived for negative balance (debt settlement)
+  const feeYen = grossYen >= CASHOUT_FEE ? CASHOUT_FEE : 0;
   const netYen = grossYen - feeYen;
 
   const co = await prisma.cashOut.create({
