@@ -22,11 +22,14 @@ export async function GET(req: NextRequest) {
   });
 
   // ユーザー向けにオーバーライドを適用した分数を付与
+  // penalty category items use negative effectiveMin so CategorySection groups them correctly
   const result = items.map((item) => {
     const override = item.overrides.find((o) => o.userId === userId);
+    const rawMin = override ? override.overrideMin : item.defaultMin;
+    const effectiveMin = item.category === "penalty" ? -Math.abs(rawMin) : rawMin;
     return {
       ...item,
-      effectiveMin: override ? override.overrideMin : item.defaultMin,
+      effectiveMin,
       recentRequestsCount: item._count.requests,
     };
   });

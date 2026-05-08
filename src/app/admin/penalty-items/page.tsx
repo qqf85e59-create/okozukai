@@ -37,7 +37,7 @@ export default function AdminPenaltyItemsPage() {
     const meRes = await fetch("/api/auth/me");
     if (!meRes.ok) { router.push("/"); return; }
     const meData = await meRes.json();
-    if (meData.role !== "admin") { router.push("/home"); return; }
+    if (meData.role !== "admin" && meData.role !== "approver") { router.push("/home"); return; }
     setMe(meData);
 
     const res = await fetch("/api/admin/penalty-items");
@@ -263,6 +263,9 @@ export default function AdminPenaltyItemsPage() {
                   <span className="text-sm font-bold text-gray-800 dark:text-gray-100 flex-1">{item.name}</span>
                   <span className="text-sm font-black" style={{ color: "var(--expo-red)" }}>
                     -{item.penaltyMinutes}分{item.mode === "PROPORTIONAL" && item.unitLabel ? `/${item.unitLabel}` : ""}
+                    {item.penaltyMinutes % 5 !== 0 && (
+                      <span title="5分刻みではありません" className="ml-1 text-[10px] px-1 rounded" style={{ background: "#fef3c7", color: "#d97706" }}>⚠</span>
+                    )}
                   </span>
                   {item.mode === "PROPORTIONAL" && (
                     <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">比例</span>

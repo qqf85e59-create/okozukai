@@ -33,8 +33,9 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
-  // /admin/* ページは admin ロールのみ
-  if (pathname.startsWith("/admin/") && session.role !== "admin") {
+  // /admin/* ページは admin のみ。ただし項目編集ページは approver も許可
+  const isApproverAllowed = pathname === "/admin/chore-items" || pathname === "/admin/penalty-items";
+  if (pathname.startsWith("/admin/") && session.role !== "admin" && !(isApproverAllowed && session.role === "approver")) {
     return NextResponse.redirect(new URL("/home", req.url));
   }
 

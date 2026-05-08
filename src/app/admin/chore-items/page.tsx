@@ -39,7 +39,7 @@ export default function AdminChoreItemsPage() {
     const meRes = await fetch("/api/auth/me");
     if (!meRes.ok) { router.push("/"); return; }
     const meData = await meRes.json();
-    if (meData.role !== "admin") { router.push("/home"); return; }
+    if (meData.role !== "admin" && meData.role !== "approver") { router.push("/home"); return; }
     setMe(meData);
 
     const res = await fetch("/api/admin/chore-items");
@@ -249,7 +249,12 @@ export default function AdminChoreItemsPage() {
                       {item.mode === "PROPORTIONAL" && (
                         <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: "var(--expo-light-blue)", color: "var(--expo-blue)" }}>比例</span>
                       )}
-                      <span className="text-sm font-black" style={{ color: "var(--expo-blue)" }}>{item.bonusMinutes}分</span>
+                      <span className="text-sm font-black" style={{ color: "var(--expo-blue)" }}>
+                        {item.bonusMinutes}分
+                        {item.bonusMinutes % 5 !== 0 && (
+                          <span title="5分刻みではありません" className="ml-1 text-[10px] px-1 rounded" style={{ background: "#fef3c7", color: "#d97706" }}>⚠</span>
+                        )}
+                      </span>
                     </div>
                   )}
 
